@@ -1,0 +1,18 @@
+# Pinned deliberately. Railway rebuilds on every push, and an unpinned
+# transitive dependency breaking your build at 2am is not how you want to
+# learn about semver.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+greenlet==3.1.1
+
+redis==5.2.1
+httpx==0.28.1
+
+python-multipart==0.0.20
+orjson==3.10.13

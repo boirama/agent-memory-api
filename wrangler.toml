@@ -1,0 +1,22 @@
+# Cloudflare Worker config. `wrangler deploy` reads this.
+#
+# The free plan gives 100,000 requests/day. At the Pro plan's 50,000
+# calls/month that is nowhere near binding, so nothing here costs money until
+# you have real traffic.
+
+name = "agent-memory-api"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[observability]
+enabled = true
+
+[vars]
+# Overrides the ORIGIN constant in worker.js if set. Useful for staging:
+# wrangler deploy --var ORIGIN_URL:https://staging-xyz.up.railway.app
+# ORIGIN_URL = "https://your-app.up.railway.app"
+
+# Uncomment once you own a domain and want a branded URL.
+# routes = [
+#   { pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }
+# ]

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto-Expire Stale Memories with TTL</title>
+<meta name="description" content="Stop outdated facts polluting your AI agent's responses. Set time-to-live on memories so they expire automatically, and understand how importance decay ranks old facts down.">
+<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/auto-expire-stale-memories.html">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Auto-Expire Stale Memories with TTL",
+  "description": "Stop outdated facts polluting your AI agent's responses. Set time-to-live on memories so they expire automatically, and understand how importance decay ranks old facts down.",
+  "proficiencyLevel": "Beginner",
+  "programmingLanguage": ["Python", "TypeScript"],
+  "dependencies": "httpx >= 0.27",
+  "author": {"@type": "Organization", "name": "Agent Memory API"},
+  "datePublished": "2026-09-24",
+  "dateModified": "2026-09-24",
+  "about": {"@type": "WebAPI", "name": "Agent Memory API"}
+}
+</script>
+<style>
+:root{--fg:#111;--muted:#555;--code:#f5f5f4;--border:#e5e5e3;--accent:#0b5}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--fg)}
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .5rem}
+h2{font-size:1.3rem;margin:2.25rem 0 .75rem;padding-top:.5rem;border-top:1px solid var(--border)}
+h3{font-size:1.02rem;margin:1.6rem 0 .5rem}
+.lede{font-size:1.12rem;color:var(--muted)}
+code{background:var(--code);padding:.15em .4em;border-radius:3px;font-size:.9em}
+pre{background:var(--code);padding:1rem;border-radius:6px;overflow-x:auto;font-size:.875rem;line-height:1.5}
+pre code{background:none;padding:0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+.note{border-left:3px solid var(--accent);padding:.6rem 0 .6rem 1rem;color:var(--muted);margin:1rem 0}
+.crumb{font-size:.88rem;color:var(--muted);margin-bottom:1.5rem}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../index.html">Agent Memory API</a> / Guides</div>
+<h1>Auto-Expire Stale Memories with TTL</h1>
+<p class="lede">An agent that remembers everything forever is almost as broken as one that remembers nothing. Last quarter's pricing, a resolved outage, a contact who left the company — all of it keeps surfacing in recall and quietly poisoning answers. This guide gives facts a shelf life.</p>
+
+<h2>What You Will Build</h2>
+<p>A memory-writing layer that classifies facts by how long they stay true, plus an understanding of how ranking already down-weights old material even before it expires. Ten minutes.</p>
+
+<h2>Prerequisites</h2>
+<ul>
+  <li>A RapidAPI key for Agent Memory API</li>
+  <li>Python 3.9+ with <code>httpx</code></li>
+</ul>
+
+<h2>Authentication</h2>
+<pre><code>import os, httpx
+
+BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+HEADERS = {
+    "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
+    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "Content-Type": "application/json",
+}
+</code></pre>
+
+<h2>Two Mechanisms, Not One</h2>
+<p>Staleness is handled in two independent ways, and they solve different problems:</p>
+<table>
+<tr><th>Mechanism</th><th>What it does</th><th>Use it for</th></tr>
+<tr><td><code>ttl_seconds</code></td><td>Hard expiry. After the deadline the memory stops appearing in recall entirely.</td><td>Facts with a known end date</td></tr>
+<tr><td>Salience decay</td><td>Gradual. Importance falls exponentially with time since last access, and rises with recall frequency. Automatic, nothing to configure.</td><td>Facts that fade in relevance rather than expiring</td></tr>
+</table>
+<p>Decay has roughly a 46-day half-life for untouched memories. A fact recalled regularly never decays, because each recall resets the clock and reinforces it.</p>
+
+<h2>Step 1 — Classify by Shelf Life</h2>
+<p>Do this once and apply it everywhere you write. The categories matter more than the exact numbers.</p>
+<pre><code>TTL = {
+    "permanent":  None,            # name, timezone, language, allergies
+    "annual":     365 * 86400,     # contract terms, fiscal calendar
+    "quarterly":   90 * 86400,     # current project, active goals
+    "monthly":     30 * 86400,     # preferences that drift, current sprint
+    "ephemeral":         3600,     # in-conversation scratch state
+}
+</code></pre>
+
+<h2>Step 2 — Write with a TTL</h2>
+<pre><code>def remember(content: str, agent_id: str, namespace: str,
+             shelf_life: str = "permanent", importance: float | None = None):
+    payload = {"content": content, "agent_id": agent_id, "namespace": namespace}
+    ttl = TTL[shelf_life]
+    if ttl:
+        payload["ttl_seconds"] = ttl
+    if importance is not None:
+        payload["importance"] = importance
+
+    r = httpx.post(f"{BASE}/v1/memories", headers=HEADERS, json=payload)
+    r.raise_for_status()
+    return r.json()
+
+
+# Permanent: still true in five years
+remember("User's primary language is Setswana", "support-bot-001",
+         "acme-corp/users/prefs", "permanent")
+
+# Quarterly: true now, probably not in six months
+remember("Currently migrating from Zendesk; go-live targeted for Q4 2026",
+         "support-bot-001", "acme-corp/users/projects", "quarterly")
+
+# Ephemeral: dies with the conversation
+remember("User is comparing the Pro and Team plans in this session",
+         "support-bot-001", "acme-corp/sessions", "ephemeral")
+</code></pre>
+
+<p>The response tells you exactly when it dies:</p>
+<pre><code>{
+  "memory_id": "7c1e9a04-3b2f-4d18-9f55-0a8e2c6b41d7",
+  "status": "created",
+  "namespace": "acme-corp/users/projects",
+  "importance": 0.72,
+  "expires_at": "2026-12-23T14:02:11Z",
+  "tokens_used": 14,
+  "cost_usd": 0.001
+}
+</code></pre>
+
+<h2>Step 3 — Let Dedupe Handle Corrections</h2>
+<p>When a fact changes, write the new version to the same namespace and agent. Near-identical content updates the existing memory rather than creating a rival copy, so recall never has to choose between two contradictory facts.</p>
+<pre><code>remember("Currently migrating from Zendesk; go-live targeted for Q4 2026",
+         "support-bot-001", "acme-corp/users/projects", "quarterly")
+# -> {"status": "created", "memory_id": "7c1e9a04-..."}
+
+remember("Currently migrating from Zendesk; go-live slipped to Q1 2027",
+         "support-bot-001", "acme-corp/users/projects", "quarterly")
+# -> {"status": "updated", "memory_id": "7c1e9a04-..."}   same ID
+</code></pre>
+<p>Pass <code>"dedupe": false</code> when you deliberately want both versions — an audit log of changing state, for instance.</p>
+
+<div class="note">
+For a flat contradiction, delete rather than overwrite. If the user says "that was never true", call <code>DELETE /v1/memories/{id}</code>. Storing a correction next to a wrong fact leaves both in recall, and nothing tells the model which one wins.
+</div>
+
+<h2>Step 4 — Verify Expiry Is Working</h2>
+<pre><code>r = httpx.get(f"{BASE}/v1/stats", headers=HEADERS)
+s = r.json()
+
+print(f"active:  {s['active_memories']}")
+print(f"expired: {s['expired_memories']}")
+for ns in s["namespaces"][:5]:
+    print(f"  {ns['namespace']}: {ns['count']} (avg importance {ns['avg_importance']:.2f})")
+</code></pre>
+<p>A namespace growing without bound is usually one where everything is being written as permanent. An <code>expired</code> count of zero after weeks of use means the same thing.</p>
+
+<h2>Filtering by Age at Read Time</h2>
+<p>Independently of TTL, restrict a recall to a date range:</p>
+<pre><code>r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params={
+    "query": "what changed on the Acme account",
+    "agent_id": "support-bot-001",
+    "temporal_window": "2026-08-01/2026-09-24",
+})
+</code></pre>
+<p>Or drop anything whose salience has already decayed below a floor:</p>
+<pre><code>r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params={
+    "query": "active commitments for this customer",
+    "agent_id": "support-bot-001",
+    "min_importance": 0.4,
+})
+</code></pre>
+
+<h2>Complete Working Example</h2>
+<pre><code>import os, httpx
+
+BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+HEADERS = {
+    "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
+    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "Content-Type": "application/json",
+}
+
+TTL = {"permanent": None, "annual": 365 * 86400, "quarterly": 90 * 86400,
+       "monthly": 30 * 86400, "ephemeral": 3600}
+
+
+class ShelfLifeMemory:
+    def __init__(self, agent_id: str, namespace: str):
+        self.agent_id, self.namespace = agent_id, namespace
+
+    def write(self, content: str, shelf_life: str = "permanent", **kw) -> str | None:
+        payload = {"content": content, "agent_id": self.agent_id,
+                   "namespace": self.namespace, **kw}
+        if TTL[shelf_life]:
+            payload["ttl_seconds"] = TTL[shelf_life]
+        try:
+            r = httpx.post(f"{BASE}/v1/memories", headers=HEADERS,
+                           json=payload, timeout=5.0)
+            r.raise_for_status()
+            return r.json()["memory_id"]
+        except httpx.HTTPError:
+            return None
+
+    def forget(self, memory_id: str) -> bool:
+        r = httpx.delete(f"{BASE}/v1/memories/{memory_id}", headers=HEADERS,
+                         params={"agent_id": self.agent_id})
+        return r.json().get("status") == "deleted"
+
+    def health(self) -> dict:
+        return httpx.get(f"{BASE}/v1/stats", headers=HEADERS,
+                         params={"agent_id": self.agent_id}).json()
+
+
+mem = ShelfLifeMemory("support-bot-001", "acme-corp/users/prefs")
+mem.write("Primary language is Setswana", "permanent")
+mem.write("Evaluating the Team plan this month", "monthly", importance=0.6)
+print(mem.health()["expired_memories"])
+</code></pre>
+
+<h2>Error Handling</h2>
+<table>
+<tr><th>Status</th><th>Cause</th><th>Fix</th></tr>
+<tr><td>422</td><td><code>ttl_seconds</code> negative or over 10 years</td><td>Range is 0 to 315,360,000. Use 0 or omit for permanent</td></tr>
+<tr><td>404 on delete</td><td>Already expired, or another agent owns it</td><td>Only the owning agent can delete</td></tr>
+</table>
+
+<h2>Next Steps</h2>
+<ul>
+  <li><a href="persist-agent-memory-across-sessions.html">Persist agent memory across sessions</a></li>
+  <li><a href="share-context-between-agents.html">Share context between agents</a> — TTL works on grants too</li>
+</ul>
+</div></body></html>

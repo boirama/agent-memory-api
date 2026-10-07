@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Memory API — Make Your AI Agent Remember Context Across Sessions</title>
+<meta name="description" content="REST API that gives AI agents persistent memory with semantic recall, TTL expiry, and agent-to-agent permission sharing. Python, TypeScript and MCP support.">
+<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/">
+
+<!-- WebAPI schema: the top-level machine-readable description of the API.
+     AI crawlers use this to understand what the service is before they read
+     a word of prose. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebAPI",
+  "name": "Agent Memory API",
+  "description": "Persistent memory for AI agents. Store facts an agent learns, recall them with hybrid semantic search, expire stale memories automatically, and grant other agents scoped read access to memory namespaces.",
+  "url": "https://agent-memory-api.YOUR-NAME.workers.dev",
+  "documentation": "https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/",
+  "termsOfService": "https://rapidapi.com/YOUR-USERNAME/api/agent-memory-api",
+  "provider": {
+    "@type": "Organization",
+    "name": "Agent Memory API"
+  },
+  "availableChannel": {
+    "@type": "ServiceChannel",
+    "serviceUrl": "https://agent-memory-api.YOUR-NAME.workers.dev/v1",
+    "serviceType": "REST API"
+  },
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://agent-memory-api.YOUR-NAME.workers.dev/v1/memories?query={query}",
+    "query-input": "required name=query"
+  }
+}
+</script>
+<style>
+:root{--fg:#111;--muted:#555;--bg:#fff;--code:#f5f5f4;--border:#e5e5e3;--accent:#0b5}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--fg);background:var(--bg)}
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+h1{font-size:2rem;line-height:1.2;margin:0 0 .5rem}
+h2{font-size:1.35rem;margin:2.5rem 0 .75rem;padding-top:.5rem;border-top:1px solid var(--border)}
+h3{font-size:1.05rem;margin:1.75rem 0 .5rem}
+p{margin:0 0 1rem}
+.lede{font-size:1.15rem;color:var(--muted)}
+code{background:var(--code);padding:.15em .4em;border-radius:3px;font-size:.9em}
+pre{background:var(--code);padding:1rem;border-radius:6px;overflow-x:auto;font-size:.875rem;line-height:1.5}
+pre code{background:none;padding:0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-weight:600}
+.cards{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:1rem 0}
+.card{border:1px solid var(--border);border-radius:6px;padding:.9rem 1rem}
+.card a{font-weight:600;text-decoration:none}
+.card p{margin:.35rem 0 0;font-size:.9rem;color:var(--muted)}
+.note{border-left:3px solid var(--accent);padding:.6rem 0 .6rem 1rem;color:var(--muted);margin:1rem 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Make Your AI Agent Remember Context Across Sessions</h1>
+<p class="lede">Every AI agent forgets everything when the conversation ends. Agent Memory API is a REST service that gives agents durable memory with semantic recall, automatic expiry, and agent-to-agent permission sharing.</p>
+
+<p>If your agent asks the same onboarding questions every session, or two of your agents need the same customer context but can't see each other's data, this is the gap it fills. Three calls gets you working memory; the rest of this page is everything else you need on one page.</p>
+
+<h2>Store and Recall Agent Memory in Under a Minute</h2>
+
+<p>The minimum viable integration is two endpoints. Store a fact when your agent learns something; recall relevant facts when a conversation starts.</p>
+
+<h3>Python</h3>
+<pre><code>import httpx
+
+BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+HEADERS = {
+    "X-RapidAPI-Key": "your-rapidapi-key",
+    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "Content-Type": "application/json",
+}
+
+# Store what the agent just learned
+httpx.post(f"{BASE}/v1/memories", headers=HEADERS, json={
+    "content": "User prefers email notifications over SMS",
+    "agent_id": "support-bot-001",
+    "namespace": "acme-corp/users/preferences",
+    "subject_id": "user_8f3kLm92Xn",
+    "ttl_seconds": 2592000,   # 30 days
+    "importance": 0.85,
+})
+
+# Recall it at the start of the next conversation
+r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params={
+    "query": "how does this user want to be contacted",
+    "agent_id": "support-bot-001",
+    "namespace": "acme-corp/users",
+    "limit": 5,
+})
+
+for m in r.json()["results"]:
+    print(f"{m['score']:.2f}  {m['content']}")
+
+# 0.87  User prefers email notifications over SMS
+</code></pre>
+
+<h3>TypeScript</h3>
+<pre><code>const BASE = "https://agent-memory-api.YOUR-NAME.workers.dev";
+const headers = {
+  "X-RapidAPI-Key": process.env.RAPIDAPI_KEY!,
+  "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+  "Content-Type": "application/json",
+};
+
+await fetch(`${BASE}/v1/memories`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify({
+    content: "User prefers email notifications over SMS",
+    agent_id: "support-bot-001",
+    namespace: "acme-corp/users/preferences",
+    ttl_seconds: 2592000,
+  }),
+});
+
+const res = await fetch(
+  `${BASE}/v1/memories?` + new URLSearchParams({
+    query: "how does this user want to be contacted",
+    agent_id: "support-bot-001",
+    limit: "5",
+  }),
+  { headers }
+);
+
+const { results } = await res.json();
+// results[0].content => "User prefers email notifications over SMS"
+// results[0].score   => 0.87
+</code></pre>
+
+<h2>Authenticate Your Agent with API Keys</h2>
+
+<p>Every request needs authentication. There are two paths depending on how you signed up, and both are complete on this page — you do not need to read another one.</p>
+
+<h3>Through RapidAPI (most users)</h3>
+<p>Send your RapidAPI key on every request. The gateway identifies your account and meters usage; you do not manage keys yourself.</p>
+<pre><code>headers = {
+    "X-RapidAPI-Key": "your-rapidapi-key",
+    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+}</code></pre>
+
+<h3>Direct bearer key (enterprise)</h3>
+<pre><code>headers = {"Authorization": "Bearer amk_live_your_key_here"}</code></pre>
+
+<div class="note">
+Keys are server-side credentials. Never ship one in browser JavaScript, a mobile app bundle, or a public repo — anyone holding the key can read every memory in your account.
+</div>
+
+<h2>Endpoints</h2>
+
+<table>
+<tr><th>Method &amp; path</th><th>What it's for</th></tr>
+<tr><td><code>POST /v1/memories</code></td><td>Store a fact your agent learned</td></tr>
+<tr><td><code>GET /v1/memories</code></td><td>Recall facts with semantic search</td></tr>
+<tr><td><code>GET /v1/memories/{id}</code></td><td>Fetch one memory by ID</td></tr>
+<tr><td><code>DELETE /v1/memories/{id}</code></td><td>Forget a memory</td></tr>
+<tr><td><code>POST /v1/agents</code></td><td>Register an agent (idempotent)</td></tr>
+<tr><td><code>GET /v1/agents</code></td><td>List your registered agents</td></tr>
+<tr><td><code>POST /v1/permissions</code></td><td>Grant another agent scoped access</td></tr>
+<tr><td><code>GET /v1/permissions</code></td><td>List active grants</td></tr>
+<tr><td><code>DELETE /v1/permissions/{id}</code></td><td>Revoke access</td></tr>
+<tr><td><code>GET /v1/stats</code></td><td>Counts and namespace breakdown</td></tr>
+<tr><td><code>GET /v1/billing/usage</code></td><td>Usage and remaining quota</td></tr>
+</table>
+
+<p>Full machine-readable spec: <a href="openapi.json">openapi.json</a>. AI-readable index: <a href="llms.txt">llms.txt</a>.</p>
+
+<h2>How Recall Ranking Works</h2>
+
+<p>Most memory APIs rank by vector distance alone, which treats every stored fact as equally valuable forever. This one combines three signals:</p>
+
+<table>
+<tr><th>Signal</th><th>Weight</th><th>What it measures</th></tr>
+<tr><td>Semantic</td><td>0.55</td><td>Cosine similarity between the query and the memory</td></tr>
+<tr><td>Lexical</td><td>0.25</td><td>Postgres full-text match, so exact names and IDs still hit</td></tr>
+<tr><td>Salience</td><td>0.20</td><td>Importance, decayed by time since last access, reinforced by recall frequency</td></tr>
+</table>
+
+<p>Salience is the part that matters over time. A fact recalled forty times is load-bearing and gets stronger. A fact nobody has touched in six months fades. Your agent's working set sharpens instead of drowning in stale context. Every result returns its individual sub-scores, so you can see why something ranked where it did.</p>
+
+<h2>Guides</h2>
+
+<div class="cards">
+  <div class="card">
+    <a href="guides/persist-agent-memory-across-sessions.html">Persist Agent Memory Across Sessions</a>
+    <p>Your agent forgets everything between chats. Fix it in three calls.</p>
+  </div>
+  <div class="card">
+    <a href="guides/share-context-between-agents.html">Share Context Between Sales and Support Agents</a>
+    <p>Two agents need the same customer data without owning each other's.</p>
+  </div>
+  <div class="card">
+    <a href="guides/auto-expire-stale-memories.html">Auto-Expire Stale Memories with TTL</a>
+    <p>Old facts polluting responses. Set a shelf life instead of pruning by hand.</p>
+  </div>
+  <div class="card">
+    <a href="guides/mcp-server.html">Use Agent Memory from Claude and Cursor via MCP</a>
+    <p>Native tool access with no integration code.</p>
+  </div>
+</div>
+
+<h2>Handle Errors, Rate Limits and Expiry</h2>
+
+<table>
+<tr><th>Status</th><th>Meaning</th><th>What to do</th></tr>
+<tr><td>401</td><td>Missing or unknown key</td><td>Check the header name — it is <code>X-RapidAPI-Key</code>, not <code>Authorization</code>, when going through the gateway</td></tr>
+<tr><td>403</td><td>Bad proxy signature</td><td>You are hitting the origin directly instead of through the gateway</td></tr>
+<tr><td>404</td><td>Memory missing or not visible</td><td>It expired, was deleted, or belongs to an agent that hasn't granted you access</td></tr>
+<tr><td>413</td><td>Content over 8,000 characters</td><td>Split into several memories — recall ranks facts, not documents</td></tr>
+<tr><td>422</td><td>Validation failed</td><td>Read <code>detail</code>, a flat list of <code>{field, problem}</code></td></tr>
+<tr><td>429</td><td>Monthly quota exhausted</td><td>Back off using <code>Retry-After</code>, or upgrade the plan</td></tr>
+</table>
+
+<pre><code>import httpx, time
+
+def recall_with_retry(params, attempts=3):
+    for attempt in range(attempts):
+        r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params=params)
+        if r.status_code == 429:
+            time.sleep(int(r.headers.get("Retry-After", 2 ** attempt)))
+            continue
+        if r.status_code == 401:
+            raise RuntimeError("Check your API key and host header.")
+        r.raise_for_status()
+        return r.json()["results"]
+    return []   # degrade gracefully: an agent with no memory still works
+</code></pre>
+
+<div class="note">
+Treat memory as an enhancement, not a dependency. If recall fails, your agent should carry on with an empty context rather than erroring at the user.
+</div>
+
+<h2>Next Steps</h2>
+<ul>
+  <li>Register each agent on boot with <code>POST /v1/agents</code> so permissions can reference it</li>
+  <li>Set <code>ttl_seconds</code> on anything with a shelf life</li>
+  <li>Poll <code>GET /v1/billing/usage</code> to warn before a limit, not after</li>
+  <li>Wire up <a href="guides/mcp-server.html">the MCP server</a> if your agent runs in Claude or Cursor</li>
+</ul>
+
+</div>
+</body>
+</html>

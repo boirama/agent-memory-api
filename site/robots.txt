@@ -1,0 +1,25 @@
+# Explicitly welcome AI crawlers. Blocking these is the single most common
+# reason an otherwise well-optimised docs site never gets cited.
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/sitemap.xml

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share Context Between Sales and Support Agents</title>
+<meta name="description" content="Let one AI agent read another's memory with scoped, revocable namespace permissions. Complete Python guide with hierarchical grants and TTL auto-revoke.">
+<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/share-context-between-agents.html">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Share Context Between Sales and Support Agents",
+  "description": "Let one AI agent read another's memory with scoped, revocable namespace permissions. Complete Python guide with hierarchical grants and TTL auto-revoke.",
+  "proficiencyLevel": "Beginner",
+  "programmingLanguage": ["Python", "TypeScript"],
+  "dependencies": "httpx >= 0.27",
+  "author": {"@type": "Organization", "name": "Agent Memory API"},
+  "datePublished": "2026-09-24",
+  "dateModified": "2026-09-24",
+  "about": {"@type": "WebAPI", "name": "Agent Memory API"}
+}
+</script>
+<style>
+:root{--fg:#111;--muted:#555;--code:#f5f5f4;--border:#e5e5e3;--accent:#0b5}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--fg)}
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .5rem}
+h2{font-size:1.3rem;margin:2.25rem 0 .75rem;padding-top:.5rem;border-top:1px solid var(--border)}
+h3{font-size:1.02rem;margin:1.6rem 0 .5rem}
+.lede{font-size:1.12rem;color:var(--muted)}
+code{background:var(--code);padding:.15em .4em;border-radius:3px;font-size:.9em}
+pre{background:var(--code);padding:1rem;border-radius:6px;overflow-x:auto;font-size:.875rem;line-height:1.5}
+pre code{background:none;padding:0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+.note{border-left:3px solid var(--accent);padding:.6rem 0 .6rem 1rem;color:var(--muted);margin:1rem 0}
+.crumb{font-size:.88rem;color:var(--muted);margin-bottom:1.5rem}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../index.html">Agent Memory API</a> / Guides</div>
+<h1>Share Context Between Sales and Support Agents</h1>
+<p class="lede">A sales agent learns a customer escalates to legal over pricing. Two weeks later a support agent opens a ticket with that customer, knows none of it, and walks straight into the landmine. This guide connects them — without either agent owning the other's data.</p>
+
+<h2>What You Will Build</h2>
+<p>A sales agent that writes to its own namespace, a support agent that can read it, and a revocation path that cuts access instantly when the engagement ends. About fifteen minutes.</p>
+
+<h2>Prerequisites</h2>
+<ul>
+  <li>A RapidAPI key for Agent Memory API</li>
+  <li>Two agent identifiers — here <code>sales-bot-001</code> and <code>support-bot-001</code></li>
+  <li>Python 3.9+ with <code>httpx</code></li>
+</ul>
+
+<h2>Authentication</h2>
+<pre><code>import os, httpx
+
+BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+HEADERS = {
+    "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
+    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "Content-Type": "application/json",
+}
+SALES, SUPPORT = "sales-bot-001", "support-bot-001"
+</code></pre>
+
+<h2>Step 1 — Register Both Agents</h2>
+<p>An agent must exist before it can be named in a grant.</p>
+<pre><code>for agent_id, name in [(SALES, "Sales Bot"), (SUPPORT, "Support Bot")]:
+    httpx.post(f"{BASE}/v1/agents", headers=HEADERS, json={
+        "agent_id": agent_id, "display_name": name, "framework": "crewai",
+    })
+</code></pre>
+
+<h2>Step 2 — Sales Agent Writes to Its Own Namespace</h2>
+<p>Namespaces are how permission boundaries are drawn, so group facts by who should eventually read them — not by what they are about.</p>
+<pre><code>httpx.post(f"{BASE}/v1/memories", headers=HEADERS, json={
+    "content": "Do not discuss pricing with Priya Raman at Acme; she escalates to legal immediately. Route pricing questions to Dana Whitfield.",
+    "agent_id": SALES,
+    "namespace": "acme-corp/sales/leads",
+    "scope": "org",
+    "importance": 0.95,
+})
+</code></pre>
+
+<h2>Step 3 — Confirm the Support Agent Cannot See It Yet</h2>
+<p>Isolation is the default. Verify it, so you know the grant in the next step is what changes the outcome.</p>
+<pre><code>r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params={
+    "query": "who should I avoid discussing pricing with at Acme",
+    "agent_id": SUPPORT,
+})
+print(r.json()["count"])   # 0
+</code></pre>
+
+<h2>Step 4 — Grant Namespace Access</h2>
+<p>Grants are hierarchical. A grant on <code>acme-corp/sales</code> also covers <code>acme-corp/sales/leads</code> and everything below it, so grant the parent and let the tree fill in.</p>
+<pre><code>grant = httpx.post(f"{BASE}/v1/permissions", headers=HEADERS, json={
+    "granter_agent_id": SALES,
+    "grantee_agent_id": SUPPORT,
+    "namespace": "acme-corp/sales",
+    "permission": "read",
+    "ttl_seconds": 90 * 86400,        # auto-revoke after the engagement
+    "note": "Support needs lead context for the Acme migration",
+}).json()
+
+permission_id = grant["permission_id"]
+</code></pre>
+
+<div class="note">
+Set <code>grantee_agent_id</code> to <code>"*"</code> to share with every agent on your account. Convenient, and exactly how a private note ends up in front of the wrong bot. Prefer naming agents explicitly.
+</div>
+
+<h2>Step 5 — Support Agent Recalls It</h2>
+<pre><code>r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params={
+    "query": "who should I avoid discussing pricing with at Acme",
+    "agent_id": SUPPORT,
+})
+body = r.json()
+
+for m in body["results"]:
+    print(f"[{m['via']}] from {m['agent_id']}: {m['content'][:60]}")
+
+print("contributed by:", body["agents_consulted"])
+
+# [grant] from sales-bot-001: Do not discuss pricing with Priya Raman at Acme...
+# contributed by: ['sales-bot-001']
+</code></pre>
+<p>Each result reports <code>via</code>: <code>owned</code>, <code>grant</code>, or <code>share</code>. Use it to attribute context in your prompt — "your colleague's sales agent noted..." reads better than presenting another agent's finding as your own.</p>
+
+<h2>Sharing a Single Memory Instead</h2>
+<p>For a one-off hand-off, grant the specific memory rather than the namespace.</p>
+<pre><code>httpx.post(f"{BASE}/v1/permissions", headers=HEADERS, json={
+    "granter_agent_id": SALES,
+    "grantee_agent_id": SUPPORT,
+    "memory_id": "9f8b2c14-...",
+    "permission": "read",
+})
+</code></pre>
+
+<h2>Step 6 — Revoke When the Engagement Ends</h2>
+<pre><code>httpx.delete(f"{BASE}/v1/permissions/{permission_id}", headers=HEADERS)
+
+# Verify
+r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS, params={
+    "query": "who should I avoid discussing pricing with at Acme",
+    "agent_id": SUPPORT,
+})
+print(r.json()["count"])   # 0 again
+</code></pre>
+<p>Revocation takes effect on the next recall; cached results for your account are invalidated immediately. Audit what is currently open with <code>GET /v1/permissions</code>.</p>
+
+<h2>Complete Working Example</h2>
+<pre><code>import os, httpx
+
+BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+HEADERS = {
+    "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
+    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "Content-Type": "application/json",
+}
+
+
+def register(agent_id: str, name: str):
+    httpx.post(f"{BASE}/v1/agents", headers=HEADERS,
+               json={"agent_id": agent_id, "display_name": name})
+
+
+def grant_read(granter: str, grantee: str, namespace: str, days: int) -> str:
+    r = httpx.post(f"{BASE}/v1/permissions", headers=HEADERS, json={
+        "granter_agent_id": granter, "grantee_agent_id": grantee,
+        "namespace": namespace, "permission": "read",
+        "ttl_seconds": days * 86400,
+    })
+    r.raise_for_status()
+    return r.json()["permission_id"]
+
+
+def recall_with_attribution(agent_id: str, query: str) -> list[str]:
+    r = httpx.get(f"{BASE}/v1/memories", headers=HEADERS,
+                  params={"query": query, "agent_id": agent_id, "limit": 6})
+    r.raise_for_status()
+    out = []
+    for m in r.json()["results"]:
+        prefix = "" if m["via"] == "owned" else f"(via {m['agent_id']}) "
+        out.append(f"{prefix}{m['content']}")
+    return out
+
+
+register("sales-bot-001", "Sales Bot")
+register("support-bot-001", "Support Bot")
+pid = grant_read("sales-bot-001", "support-bot-001", "acme-corp/sales", days=90)
+
+for fact in recall_with_attribution("support-bot-001", "Acme pricing escalation risk"):
+    print(fact)
+
+# When the engagement ends:
+httpx.delete(f"{BASE}/v1/permissions/{pid}", headers=HEADERS)
+</code></pre>
+
+<h2>Error Handling</h2>
+<table>
+<tr><th>Status</th><th>Cause</th><th>Fix</th></tr>
+<tr><td>400</td><td>Both <code>namespace</code> and <code>memory_id</code> sent, or neither</td><td>Send exactly one</td></tr>
+<tr><td>400</td><td>Granter equals grantee</td><td>An agent already sees its own memories</td></tr>
+<tr><td>404</td><td>Memory not owned by the granter</td><td>Only the owning agent can grant access to a memory</td></tr>
+</table>
+
+<h2>Next Steps</h2>
+<ul>
+  <li><a href="auto-expire-stale-memories.html">Auto-expire stale memories with TTL</a></li>
+  <li><a href="persist-agent-memory-across-sessions.html">Persist agent memory across sessions</a></li>
+  <li>Audit open grants regularly with <code>GET /v1/permissions</code></li>
+</ul>
+</div></body></html>

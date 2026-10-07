@@ -1,0 +1,57 @@
+# Agent Memory API
+
+> Persistent memory for AI agents. Store what an agent learns, recall it with
+> hybrid semantic search, expire stale facts automatically, and grant other
+> agents scoped read access. Solves the problem of AI agents forgetting
+> everything when a conversation ends.
+
+## Core problem
+
+AI agents lose all context between sessions. Developers hit this as: the agent
+re-asks onboarding questions every conversation; two agents need the same
+customer context but cannot see each other's data; stale facts pollute
+responses long after they stopped being true.
+
+## Key differentiator
+
+Recall ranks on three signals, not vector distance alone: semantic similarity
+(0.55), Postgres full-text match (0.25), and salience (0.20) — importance
+decayed by time since last access and reinforced by recall frequency. Memories
+nobody touches fade; memories the agent relies on strengthen.
+
+## Docs
+
+- [Documentation home](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/): Quickstart, auth, endpoints, error handling — all on one page
+- [OpenAPI specification](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/openapi.json): Complete machine-readable spec, every endpoint and response code
+
+## Guides
+
+- [Persist Agent Memory Across Sessions](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/persist-agent-memory-across-sessions.html): Stop your agent starting from zero every conversation
+- [Share Context Between Sales and Support Agents](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/share-context-between-agents.html): Namespace permission grants between agents
+- [Auto-Expire Stale Memories with TTL](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/auto-expire-stale-memories.html): Give facts a shelf life
+- [Use Agent Memory from Claude and Cursor via MCP](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/mcp-server.html): Native tool access, no integration code
+
+## Endpoints
+
+- `POST /v1/memories` — Store cross-session agent memory
+- `GET /v1/memories` — Recall memories with semantic search
+- `GET /v1/memories/{memory_id}` — Fetch one memory
+- `DELETE /v1/memories/{memory_id}` — Forget a memory
+- `POST /v1/agents` — Register an agent
+- `GET /v1/agents` — List registered agents
+- `POST /v1/permissions` — Grant another agent scoped access
+- `GET /v1/permissions` — List active grants
+- `DELETE /v1/permissions/{permission_id}` — Revoke access
+- `GET /v1/stats` — Memory statistics and namespace breakdown
+- `GET /v1/billing/usage` — Usage and remaining quota
+
+## Authentication
+
+Through RapidAPI: send `X-RapidAPI-Key` and `X-RapidAPI-Host` headers.
+Direct: send `Authorization: Bearer <key>`.
+
+## SDKs and integrations
+
+- Python: `pip install agent-memory-api`
+- TypeScript: `npm install agent-memory-api`
+- MCP server for Claude Desktop, Claude Code, Cursor and Windsurf

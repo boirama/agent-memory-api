@@ -1,0 +1,4 @@
+# The MCP server is deployed separately from the API - users run it on their
+# own machine next to Claude Desktop or Cursor.
+mcp[cli]>=1.2.0
+httpx>=0.27.0

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Use Agent Memory from Claude and Cursor via MCP</title>
+<meta name="description" content="Give Claude Desktop, Claude Code, Cursor and Windsurf persistent memory through the Model Context Protocol. No integration code required.">
+<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/mcp-server.html">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Use Agent Memory from Claude and Cursor via MCP",
+  "description": "Give Claude Desktop, Claude Code, Cursor and Windsurf persistent memory through the Model Context Protocol. No integration code required.",
+  "proficiencyLevel": "Beginner",
+  "programmingLanguage": ["Python"],
+  "dependencies": "mcp >= 1.2.0, httpx >= 0.27",
+  "author": {"@type": "Organization", "name": "Agent Memory API"},
+  "datePublished": "2026-09-24",
+  "dateModified": "2026-09-24",
+  "about": {"@type": "WebAPI", "name": "Agent Memory API"}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "Agent Memory MCP Server",
+  "programmingLanguage": "Python",
+  "runtimePlatform": "Python 3.10+",
+  "targetProduct": {"@type": "WebAPI", "name": "Agent Memory API"}
+}
+</script>
+<style>
+:root{--fg:#111;--muted:#555;--code:#f5f5f4;--border:#e5e5e3;--accent:#0b5}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--fg)}
+.wrap{max-width:820px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 .5rem}
+h2{font-size:1.3rem;margin:2.25rem 0 .75rem;padding-top:.5rem;border-top:1px solid var(--border)}
+h3{font-size:1.02rem;margin:1.6rem 0 .5rem}
+.lede{font-size:1.12rem;color:var(--muted)}
+code{background:var(--code);padding:.15em .4em;border-radius:3px;font-size:.9em}
+pre{background:var(--code);padding:1rem;border-radius:6px;overflow-x:auto;font-size:.875rem;line-height:1.5}
+pre code{background:none;padding:0}
+a{color:var(--accent)}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+.note{border-left:3px solid var(--accent);padding:.6rem 0 .6rem 1rem;color:var(--muted);margin:1rem 0}
+.crumb{font-size:.88rem;color:var(--muted);margin-bottom:1.5rem}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../index.html">Agent Memory API</a> / Guides</div>
+
+<h1>Use Agent Memory from Claude and Cursor via MCP</h1>
+<p class="lede">The Model Context Protocol lets Claude Desktop, Claude Code, Cursor and Windsurf call tools directly. Point one at this server and your assistant gets durable memory across every conversation — with no integration code in your project at all.</p>
+
+<h2>What You Will Build</h2>
+<p>A local MCP server that exposes five tools to your assistant: <code>remember</code>, <code>recall</code>, <code>forget</code>, <code>share_memory_with_agent</code> and <code>memory_stats</code>. Five minutes.</p>
+
+<h2>Prerequisites</h2>
+<ul>
+  <li>Python 3.10+</li>
+  <li>A RapidAPI key for Agent Memory API</li>
+  <li>An MCP-capable client (Claude Desktop, Claude Code, Cursor or Windsurf)</li>
+</ul>
+
+<h2>Step 1 — Install</h2>
+<pre><code>git clone https://github.com/YOUR-GITHUB-USERNAME/agent-memory-api.git
+cd agent-memory-api
+pip install -r mcp/requirements.txt
+</code></pre>
+
+<h2>Step 2 — Configure Your Client</h2>
+<p>Claude Desktop reads <code>claude_desktop_config.json</code> — on macOS at
+<code>~/Library/Application Support/Claude/</code>, on Windows at <code>%APPDATA%\Claude\</code>.</p>
+<pre><code>{
+  "mcpServers": {
+    "agent-memory": {
+      "command": "python",
+      "args": ["/absolute/path/to/agent-memory-api/mcp/server.py"],
+      "env": {
+        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api.YOUR-NAME.workers.dev",
+        "AGENT_MEMORY_API_KEY": "your-rapidapi-key",
+        "AGENT_MEMORY_RAPIDAPI_HOST": "agent-memory-api.p.rapidapi.com",
+        "AGENT_MEMORY_AGENT_ID": "claude-desktop"
+      }
+    }
+  }
+}
+</code></pre>
+<p>Use an absolute path — MCP clients do not resolve relative ones. Restart the client afterwards; it only reads this file on launch.</p>
+
+<div class="note">
+Give each client its own <code>AGENT_MEMORY_AGENT_ID</code> — <code>claude-desktop</code>, <code>cursor</code>, <code>claude-code</code>. Memories are owned per agent, so distinct IDs are what make permission grants between your own tools meaningful. Use the same ID everywhere and they silently share one pool.
+</div>
+
+<h2>Step 3 — Use It</h2>
+<p>Once connected, the tools are available without you naming them:</p>
+<pre><code>You:    I always want Python examples to use httpx, never requests.
+Claude: [calls remember]
+        Noted — I'll use httpx in Python examples from now on.
+
+--- new conversation, days later ---
+
+You:    Show me how to call a REST endpoint in Python.
+Claude: [calls recall]
+        import httpx
+        ...
+</code></pre>
+
+<h2>Environment Variables</h2>
+<table>
+<tr><th>Variable</th><th>Required</th><th>Purpose</th></tr>
+<tr><td><code>AGENT_MEMORY_BASE_URL</code></td><td>yes</td><td>Your Cloudflare Worker or RapidAPI gateway URL</td></tr>
+<tr><td><code>AGENT_MEMORY_API_KEY</code></td><td>yes</td><td>RapidAPI key, or a direct bearer key</td></tr>
+<tr><td><code>AGENT_MEMORY_RAPIDAPI_HOST</code></td><td>no</td><td>Set when going through RapidAPI; omit to call your Worker directly</td></tr>
+<tr><td><code>AGENT_MEMORY_AGENT_ID</code></td><td>no</td><td>Owner ID for memories this client writes. Defaults to <code>mcp-client</code></td></tr>
+</table>
+
+<h2>The Tools</h2>
+<table>
+<tr><th>Tool</th><th>When the model calls it</th></tr>
+<tr><td><code>remember</code></td><td>The user states a preference, decision, constraint or deadline worth keeping</td></tr>
+<tr><td><code>recall</code></td><td>Conversation start, or the user refers to something with no context ("the usual", "like last time")</td></tr>
+<tr><td><code>forget</code></td><td>The user corrects a stored fact or asks for it to be deleted</td></tr>
+<tr><td><code>share_memory_with_agent</code></td><td>The user wants another assistant or teammate's agent to have this context</td></tr>
+<tr><td><code>memory_stats</code></td><td>The user asks what is stored, or wants to audit namespaces</td></tr>
+</table>
+
+<h2>Troubleshooting</h2>
+<table>
+<tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+<tr><td>Tools never appear</td><td>Client did not restart, or the path is relative</td><td>Use an absolute path, then fully quit and relaunch</td></tr>
+<tr><td>"Could not reach the memory API"</td><td>Wrong base URL, or Railway is cold-starting</td><td>Open <code>BASE_URL/health</code> in a browser and retry</td></tr>
+<tr><td>Every call returns 401</td><td>Host header mismatch</td><td>Set <code>AGENT_MEMORY_RAPIDAPI_HOST</code> when using the gateway; unset it when calling your Worker directly</td></tr>
+<tr><td>Recall returns nothing</td><td>Agent ID changed between sessions</td><td>Memories are owned per agent — keep the ID stable</td></tr>
+</table>
+
+<p>Test the server standalone before blaming the client:</p>
+<pre><code>export AGENT_MEMORY_BASE_URL="https://agent-memory-api.YOUR-NAME.workers.dev"
+export AGENT_MEMORY_API_KEY="your-key"
+python mcp/server.py
+# Waits on stdio. No error output means it started cleanly.
+</code></pre>
+
+<h2>Next Steps</h2>
+<ul>
+  <li><a href="share-context-between-agents.html">Share context between agents</a> — let Cursor read what Claude Desktop learned</li>
+  <li><a href="auto-expire-stale-memories.html">Auto-expire stale memories with TTL</a></li>
+</ul>
+</div></body></html>
