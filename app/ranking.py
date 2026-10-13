@@ -124,6 +124,15 @@ def build_recall_sql(
     pgvector operators and ts_rank_cd have no clean ORM equivalent, and
     ORM-generated SQL is harder to EXPLAIN when tuning. Every user value
     is still a bound parameter - nothing is interpolated.
+
+    Structure: candidates -> scored -> ranked -> filtered output.
+
+    The `ranked` CTE exists purely so the outer query can filter on the
+    computed `score`. SQL will not let you reference a column alias in the
+    same SELECT's WHERE clause, so :min_score has to be applied one level
+    out. Note this filters on the FINAL hybrid score, which is a different
+    thing from :min_importance - that one filters on salience alone,
+    before relevance is taken into account.
     """
     visibility = _VISIBILITY_SQL if include_shared else _OWNED_ONLY_SQL
 
@@ -175,28 +184,39 @@ scored AS (
             + CAST(:reinforcement AS double precision) * LN(1 + c.access_count)
         ) AS salience_score
     FROM candidates c
+),
+ranked AS (
+    SELECT
+        s.*,
+        (
+              CAST(:w_semantic AS double precision) * GREATEST(0.0, s.semantic_score)
+            + CAST(:w_lexical  AS double precision) * s.lexical_score
+            + CAST(:w_salience AS double precision) * s.salience_score
+        ) AS score
+    FROM scored s
+    WHERE s.salience_score >= CAST(:min_importance AS double precision)
 )
-SELECT
-    s.*,
-    (
-          CAST(:w_semantic AS double precision) * GREATEST(0.0, s.semantic_score)
-        + CAST(:w_lexical  AS double precision) * s.lexical_score
-        + CAST(:w_salience AS double precision) * s.salience_score
-    ) AS score
-FROM scored s
-WHERE s.salience_score >= CAST(:min_importance AS double precision)
-ORDER BY score DESC, s.created_at DESC
+SELECT * FROM ranked
+WHERE score >= CAST(:min_score AS double precision)
+ORDER BY score DESC, created_at DESC
 LIMIT :limit
 """
 
 
 def base_params() -> dict:
+    """Tuning constants shared by every recall query.
+
+    min_score carries a 0.0 default here so a future call site that forgets
+    to pass it degrades to "return everything" rather than raising on a
+    missing bind parameter. Callers that expose the knob override it.
+    """
     return {
         "decay_rate": settings.decay_rate_per_day,
         "reinforcement": settings.reinforcement_factor,
         "w_semantic": settings.weight_semantic,
         "w_lexical": settings.weight_lexical,
         "w_salience": settings.weight_salience,
+        "min_score": 0.0,
     }
 
 

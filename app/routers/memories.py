@@ -203,6 +203,9 @@ async def create_memory(
         "by time since last access, reinforced by how often the memory is "
         "recalled). Memories nobody touches fade; memories your agent relies on "
         "get stronger.\n\n"
+        "Set `min_score` when you are feeding results straight into a prompt - "
+        "without a floor, an unrelated question still returns whatever is in "
+        "the namespace, and irrelevant memories in a prompt do real damage.\n\n"
         "Results include memories other agents have shared with this one. Pass "
         "`include_shared=false` to search only what this agent wrote itself."
     ),
@@ -220,7 +223,27 @@ async def recall_memories(
     scope: str | None = Query(None, pattern="^(user|agent|session|org)$"),
     subject_id: str | None = Query(None, description="Only memories about this subject."),
     limit: int = Query(10, ge=1, le=100),
-    min_importance: float = Query(0.0, ge=0.0, le=1.0),
+    min_importance: float = Query(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Drop memories whose salience (importance after decay and "
+            "reinforcement) falls below this, before relevance is considered."
+        ),
+    ),
+    min_score: float = Query(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Drop results whose final hybrid score falls below this. 0 (default) "
+            "returns everything the other filters allow. 0.2-0.3 is a sensible "
+            "floor for suppressing weak matches - use it when feeding results "
+            "straight into a prompt, where irrelevant memories do real damage. "
+            "Unlike min_importance, this filters on relevance to THIS query."
+        ),
+    ),
     include_shared: bool = Query(True, description="Include memories other agents shared."),
     temporal_window: str | None = Query(
         None,
@@ -234,9 +257,12 @@ async def recall_memories(
     await metering.enforce_quota(session, principal)
     limit = min(limit, settings.max_recall_limit)
 
+    # min_score is part of the cache key: two callers asking the same
+    # question with different floors must not share a cached answer.
     cache_key = cache.key(
         "recall", principal.tenant_id, agent_id, query, namespace, scope,
-        subject_id, limit, min_importance, include_shared, temporal_window,
+        subject_id, limit, min_importance, min_score, include_shared,
+        temporal_window,
     )
     if cached := await cache.get_json(cache_key):
         cost = await metering.record(session, principal, "recall", agent_id=agent_id)
@@ -265,7 +291,8 @@ async def recall_memories(
     params = ranking.base_params() | {
         "tenant_id": principal.tenant_id, "agent_id": agent_id,
         "query_vec": query_vec, "query_text": query,
-        "min_importance": min_importance, "limit": limit,
+        "min_importance": min_importance, "min_score": min_score,
+        "limit": limit,
     }
     if namespace is not None:
         params["namespace"] = namespace

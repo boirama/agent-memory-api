@@ -1,8 +1,8 @@
 """End-to-end tests against a real Postgres with pgvector.
 
 Integration tests on purpose. The interesting behaviour here - hybrid
-ranking, permission visibility, dedupe, TTL expiry - lives in SQL, so
-mocking the database would test nothing worth testing.
+ranking, permission visibility, dedupe, TTL expiry, score filtering - lives
+in SQL, so mocking the database would test nothing worth testing.
 
     pytest tests/ -v
 
@@ -235,6 +235,81 @@ def test_forget_rejects_non_owner(client):
     assert r.json()["status"] == "not_found"
 
 
+# --------------------------------------------------------- score floor -----
+
+
+def test_min_score_filters_weak_matches(client):
+    """A score floor must cut irrelevant results, not just low-importance ones.
+
+    Without this, an agent asking an unrelated question still gets handed
+    whatever happens to be in the namespace, and that noise goes straight
+    into a prompt.
+    """
+    for content, ns in [
+        ("Sean prefers email notifications over SMS", "score/preferences"),
+        ("The deployment runs on Railway in the Frankfurt region", "score/infra"),
+        ("The support SLA is 4 hours for P1 tickets", "score/support"),
+    ]:
+        client.post("/v1/memories", json={
+            "content": content, "agent_id": "score-bot",
+            "namespace": ns, "dedupe": False,
+        })
+
+    unfiltered = client.get("/v1/memories", params={
+        "query": "notification preferences", "agent_id": "score-bot",
+        "namespace": "score", "limit": 10,
+    }).json()
+
+    assert unfiltered["count"] >= 2, "need competing results to test filtering"
+    assert "prefers email" in unfiltered["results"][0]["content"]
+
+    # A floor midway between best and second-best: exactly one result should
+    # survive. A hard-coded constant would be brittle against weight changes.
+    top = unfiltered["results"][0]["score"]
+    second = unfiltered["results"][1]["score"]
+    assert top > second, "expected a clear winner to set a floor between"
+    floor = round((top + second) / 2, 6)
+
+    filtered = client.get("/v1/memories", params={
+        "query": "notification preferences", "agent_id": "score-bot",
+        "namespace": "score", "limit": 10, "min_score": floor,
+    }).json()
+
+    assert filtered["count"] == 1
+    assert "prefers email" in filtered["results"][0]["content"]
+    assert all(m["score"] >= floor for m in filtered["results"])
+
+
+def test_min_score_can_return_nothing(client):
+    """Returning zero results beats returning noise."""
+    client.post("/v1/memories", json={
+        "content": "A note about garden furniture deliveries",
+        "agent_id": "score-bot", "namespace": "score/misc", "dedupe": False,
+    })
+    r = client.get("/v1/memories", params={
+        "query": "quantum chromodynamics lattice gauge theory",
+        "agent_id": "score-bot", "namespace": "score", "min_score": 0.5,
+    })
+    assert r.status_code == 200
+    assert r.json()["count"] == 0, "weak matches leaked past the score floor"
+
+
+def test_min_score_default_is_backwards_compatible(client):
+    """Omitting min_score must behave exactly as before it existed."""
+    client.post("/v1/memories", json={
+        "content": "Baseline memory for the default min_score check",
+        "agent_id": "compat-bot", "namespace": "compat", "dedupe": False,
+    })
+    without = client.get("/v1/memories", params={
+        "query": "baseline memory", "agent_id": "compat-bot",
+    }).json()
+    with_zero = client.get("/v1/memories", params={
+        "query": "baseline memory", "agent_id": "compat-bot", "min_score": 0,
+    }).json()
+
+    assert without["count"] == with_zero["count"] >= 1
+
+
 # -------------------------------------------------------- permissions ------
 
 
@@ -393,3 +468,10 @@ def test_validation_errors_are_flat(client):
     assert r.status_code == 422
     assert r.json()["error"] == "validation_error"
     assert isinstance(r.json()["detail"], list)
+
+
+def test_min_score_rejects_out_of_range(client):
+    r = client.get("/v1/memories", params={
+        "query": "anything", "agent_id": SALES, "min_score": 1.5,
+    })
+    assert r.status_code == 422
