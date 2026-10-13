@@ -24,7 +24,6 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
                   "title": "Response Health Health Get"
                 }
@@ -48,7 +47,6 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
                   "title": "Response Schema Health Health Schema Get"
                 }
@@ -170,7 +168,7 @@
           "Memory"
         ],
         "summary": "Recall agent memories with semantic search",
-        "description": "Ask a question in natural language and get back the memories that answer it, ranked. Use this at the start of a conversation to reload everything your agent already knows about a user.\n\nRanking combines three signals rather than vector distance alone: semantic similarity, full-text match, and salience (importance decayed by time since last access, reinforced by how often the memory is recalled). Memories nobody touches fade; memories your agent relies on get stronger.\n\nResults include memories other agents have shared with this one. Pass `include_shared=false` to search only what this agent wrote itself.",
+        "description": "Ask a question in natural language and get back the memories that answer it, ranked. Use this at the start of a conversation to reload everything your agent already knows about a user.\n\nRanking combines three signals rather than vector distance alone: semantic similarity, full-text match, and salience (importance decayed by time since last access, reinforced by how often the memory is recalled). Memories nobody touches fade; memories your agent relies on get stronger.\n\nSet `min_score` when you are feeding results straight into a prompt - without a floor, an unrelated question still returns whatever is in the namespace, and irrelevant memories in a prompt do real damage.\n\nResults include memories other agents have shared with this one. Pass `include_shared=false` to search only what this agent wrote itself.",
         "operationId": "recall_memories_v1_memories_get",
         "parameters": [
           {
@@ -275,9 +273,25 @@
               "type": "number",
               "maximum": 1.0,
               "minimum": 0.0,
+              "description": "Drop memories whose salience (importance after decay and reinforcement) falls below this, before relevance is considered.",
               "default": 0.0,
               "title": "Min Importance"
-            }
+            },
+            "description": "Drop memories whose salience (importance after decay and reinforcement) falls below this, before relevance is considered."
+          },
+          {
+            "name": "min_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "description": "Drop results whose final hybrid score falls below this. 0 (default) returns everything the other filters allow. 0.2-0.3 is a sensible floor for suppressing weak matches - use it when feeding results straight into a prompt, where irrelevant memories do real damage. Unlike min_importance, this filters on relevance to THIS query.",
+              "default": 0.0,
+              "title": "Min Score"
+            },
+            "description": "Drop results whose final hybrid score falls below this. 0 (default) returns everything the other filters allow. 0.2-0.3 is a sensible floor for suppressing weak matches - use it when feeding results straight into a prompt, where irrelevant memories do real damage. Unlike min_importance, this filters on relevance to THIS query."
           },
           {
             "name": "include_shared",
@@ -1580,7 +1594,6 @@
             ]
           },
           "metadata": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           },
@@ -1962,7 +1975,6 @@
             "title": "Expires At"
           },
           "metadata": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           }
@@ -2251,7 +2263,6 @@
             "title": "Expires At"
           },
           "metadata": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           },
@@ -2369,7 +2380,6 @@
             "default": false
           },
           "metadata": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           }
@@ -2574,13 +2584,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",
