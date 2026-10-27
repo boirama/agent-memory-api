@@ -15,7 +15,7 @@
 
 // ---------------------------------------------------------------------------
 // EDIT THIS LINE  ⬇
-const ORIGIN = "https://agent-memory-api.railway.app";
+const ORIGIN = "https://agent-memory-api-production-394c.up.railway.app";
 // ---------------------------------------------------------------------------
 
 const CACHE_TTL_SECONDS = 20;
