@@ -110,7 +110,7 @@ bundle.
 
 ### Full documentation
 
-https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/
+https://boirama.github.io/agent-memory-api/
 
 ---
 

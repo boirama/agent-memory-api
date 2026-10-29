@@ -2620,7 +2620,7 @@
   ],
   "servers": [
     {
-      "url": "https://agent-memory-api.YOUR-NAME.workers.dev",
+      "url": "https://agent-memory-api.boirama.workers.dev",
       "description": "Production (Cloudflare edge)"
     },
     {
@@ -2630,6 +2630,6 @@
   ],
   "externalDocs": {
     "description": "Guides and integration examples",
-    "url": "https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/"
+    "url": "https://boirama.github.io/agent-memory-api/"
   }
 }

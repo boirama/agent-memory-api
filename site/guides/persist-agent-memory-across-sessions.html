@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Persist Agent Memory Across Sessions</title>
 <meta name="description" content="Stop your AI agent starting from zero every conversation. Complete Python and TypeScript guide to storing and recalling agent memory with the Agent Memory API.">
-<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/persist-agent-memory-across-sessions.html">
+<link rel="canonical" href="https://boirama.github.io/agent-memory-api/guides/persist-agent-memory-across-sessions.html">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -59,7 +59,7 @@ th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);
 <p>Every request carries your key. Through the RapidAPI gateway:</p>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
@@ -128,7 +128,7 @@ Write facts that stand alone. "Prefers email over SMS" is recallable in six mont
 <h2>Complete Working Example</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
@@ -177,7 +177,7 @@ mem.save("Asked about SAML SSO on the Enterprise plan")
 </code></pre>
 
 <h2>TypeScript Version</h2>
-<pre><code>const BASE = "https://agent-memory-api.YOUR-NAME.workers.dev";
+<pre><code>const BASE = "https://agent-memory-api.boirama.workers.dev";
 const headers = {
   "X-RapidAPI-Key": process.env.RAPIDAPI_KEY!,
   "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",

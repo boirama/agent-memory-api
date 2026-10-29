@@ -129,7 +129,7 @@ relative would have hidden the class of bug the assertions existed to catch.
 FastAPI, Postgres with pgvector, Redis for hot recalls, Cloudflare Workers at
 the edge. Free tiers throughout until there's real traffic.
 
-Docs: https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/
+Docs: https://boirama.github.io/agent-memory-api/
 
 ---
 

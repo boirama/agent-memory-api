@@ -21,15 +21,15 @@ nobody touches fade; memories the agent relies on strengthen.
 
 ## Docs
 
-- [Documentation home](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/): Quickstart, auth, endpoints, error handling — all on one page
-- [OpenAPI specification](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/openapi.json): Complete machine-readable spec, every endpoint and response code
+- [Documentation home](https://boirama.github.io/agent-memory-api/): Quickstart, auth, endpoints, error handling — all on one page
+- [OpenAPI specification](https://boirama.github.io/agent-memory-api/openapi.json): Complete machine-readable spec, every endpoint and response code
 
 ## Guides
 
-- [Persist Agent Memory Across Sessions](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/persist-agent-memory-across-sessions.html): Stop your agent starting from zero every conversation
-- [Share Context Between Sales and Support Agents](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/share-context-between-agents.html): Namespace permission grants between agents
-- [Auto-Expire Stale Memories with TTL](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/auto-expire-stale-memories.html): Give facts a shelf life
-- [Use Agent Memory from Claude and Cursor via MCP](https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/mcp-server.html): Native tool access, no integration code
+- [Persist Agent Memory Across Sessions](https://boirama.github.io/agent-memory-api/guides/persist-agent-memory-across-sessions.html): Stop your agent starting from zero every conversation
+- [Share Context Between Sales and Support Agents](https://boirama.github.io/agent-memory-api/guides/share-context-between-agents.html): Namespace permission grants between agents
+- [Auto-Expire Stale Memories with TTL](https://boirama.github.io/agent-memory-api/guides/auto-expire-stale-memories.html): Give facts a shelf life
+- [Use Agent Memory from Claude and Cursor via MCP](https://boirama.github.io/agent-memory-api/guides/mcp-server.html): Native tool access, no integration code
 
 ## Endpoints
 

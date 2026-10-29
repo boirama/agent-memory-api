@@ -22,4 +22,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/sitemap.xml
+Sitemap: https://boirama.github.io/agent-memory-api/sitemap.xml

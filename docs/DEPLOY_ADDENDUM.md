@@ -104,15 +104,15 @@ account.
 2. Source: **Deploy from a branch**
 3. Branch: `main`, folder: **`/site`**
 4. Save. Your docs appear at
-   `https://YOUR-USERNAME.github.io/agent-memory-api/` within a couple of minutes
+   `https://bramatlhakwana.github.io/agent-memory-api/` within a couple of minutes
 
 ### Then find and replace, across the whole `site/` folder
 
 | Placeholder | Replace with |
 |---|---|
-| `YOUR-GITHUB-USERNAME` | your GitHub username |
-| `YOUR-NAME` | your Cloudflare Workers subdomain |
-| `YOUR-USERNAME` | your RapidAPI username |
+| `boirama` | your GitHub username |
+| `boirama` | your Cloudflare Workers subdomain |
+| `bramatlhakwana` | your RapidAPI username |
 
 These appear in `index.html`, all four guides, `llms.txt`, `robots.txt`,
 `sitemap.xml` and `scripts/export_openapi.py`. In VS Code: Ctrl+Shift+H,
@@ -120,8 +120,8 @@ scope to `site/`.
 
 ### Verify it worked
 
-- `https://YOUR-USERNAME.github.io/agent-memory-api/llms.txt` returns text
-- `https://YOUR-USERNAME.github.io/agent-memory-api/openapi.json` returns JSON
+- `https://bramatlhakwana.github.io/agent-memory-api/llms.txt` returns text
+- `https://bramatlhakwana.github.io/agent-memory-api/openapi.json` returns JSON
 - Paste the homepage into Google's Rich Results Test — the WebAPI block should parse
 - `robots.txt` explicitly allows GPTBot, ClaudeBot and PerplexityBot
 

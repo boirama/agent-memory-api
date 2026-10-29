@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agent Memory API — Make Your AI Agent Remember Context Across Sessions</title>
 <meta name="description" content="REST API that gives AI agents persistent memory with semantic recall, TTL expiry, and agent-to-agent permission sharing. Python, TypeScript and MCP support.">
-<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/">
+<link rel="canonical" href="https://boirama.github.io/agent-memory-api/">
 
 <!-- WebAPI schema: the top-level machine-readable description of the API.
      AI crawlers use this to understand what the service is before they read
@@ -16,21 +16,21 @@
   "@type": "WebAPI",
   "name": "Agent Memory API",
   "description": "Persistent memory for AI agents. Store facts an agent learns, recall them with hybrid semantic search, expire stale memories automatically, and grant other agents scoped read access to memory namespaces.",
-  "url": "https://agent-memory-api.YOUR-NAME.workers.dev",
-  "documentation": "https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/",
-  "termsOfService": "https://rapidapi.com/YOUR-USERNAME/api/agent-memory-api",
+  "url": "https://agent-memory-api.boirama.workers.dev",
+  "documentation": "https://boirama.github.io/agent-memory-api/",
+  "termsOfService": "https://rapidapi.com/bramatlhakwana/api/agent-memory-api",
   "provider": {
     "@type": "Organization",
     "name": "Agent Memory API"
   },
   "availableChannel": {
     "@type": "ServiceChannel",
-    "serviceUrl": "https://agent-memory-api.YOUR-NAME.workers.dev/v1",
+    "serviceUrl": "https://agent-memory-api.boirama.workers.dev/v1",
     "serviceType": "REST API"
   },
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://agent-memory-api.YOUR-NAME.workers.dev/v1/memories?query={query}",
+    "target": "https://agent-memory-api.boirama.workers.dev/v1/memories?query={query}",
     "query-input": "required name=query"
   }
 }
@@ -74,7 +74,7 @@ th{font-weight:600}
 <h3>Python</h3>
 <pre><code>import httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": "your-rapidapi-key",
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
@@ -106,7 +106,7 @@ for m in r.json()["results"]:
 </code></pre>
 
 <h3>TypeScript</h3>
-<pre><code>const BASE = "https://agent-memory-api.YOUR-NAME.workers.dev";
+<pre><code>const BASE = "https://agent-memory-api.boirama.workers.dev";
 const headers = {
   "X-RapidAPI-Key": process.env.RAPIDAPI_KEY!,
   "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",

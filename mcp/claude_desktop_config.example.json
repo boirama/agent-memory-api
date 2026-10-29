@@ -4,7 +4,7 @@
       "command": "python",
       "args": ["/absolute/path/to/agent-memory-api/mcp/server.py"],
       "env": {
-        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api.YOUR-NAME.workers.dev",
+        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api.boirama.workers.dev",
         "AGENT_MEMORY_API_KEY": "your-rapidapi-key-here",
         "AGENT_MEMORY_RAPIDAPI_HOST": "agent-memory-api.p.rapidapi.com",
         "AGENT_MEMORY_AGENT_ID": "claude-desktop"

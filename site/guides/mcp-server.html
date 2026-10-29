@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Use Agent Memory from Claude and Cursor via MCP</title>
 <meta name="description" content="Give Claude Desktop, Claude Code, Cursor and Windsurf persistent memory through the Model Context Protocol. No integration code required.">
-<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/mcp-server.html">
+<link rel="canonical" href="https://boirama.github.io/agent-memory-api/guides/mcp-server.html">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -67,7 +67,7 @@ th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);
 </ul>
 
 <h2>Step 1 — Install</h2>
-<pre><code>git clone https://github.com/YOUR-GITHUB-USERNAME/agent-memory-api.git
+<pre><code>git clone https://github.com/boirama/agent-memory-api.git
 cd agent-memory-api
 pip install -r mcp/requirements.txt
 </code></pre>
@@ -81,7 +81,7 @@ pip install -r mcp/requirements.txt
       "command": "python",
       "args": ["/absolute/path/to/agent-memory-api/mcp/server.py"],
       "env": {
-        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api.YOUR-NAME.workers.dev",
+        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api.boirama.workers.dev",
         "AGENT_MEMORY_API_KEY": "your-rapidapi-key",
         "AGENT_MEMORY_RAPIDAPI_HOST": "agent-memory-api.p.rapidapi.com",
         "AGENT_MEMORY_AGENT_ID": "claude-desktop"
@@ -139,7 +139,7 @@ Claude: [calls recall]
 </table>
 
 <p>Test the server standalone before blaming the client:</p>
-<pre><code>export AGENT_MEMORY_BASE_URL="https://agent-memory-api.YOUR-NAME.workers.dev"
+<pre><code>export AGENT_MEMORY_BASE_URL="https://agent-memory-api.boirama.workers.dev"
 export AGENT_MEMORY_API_KEY="your-key"
 python mcp/server.py
 # Waits on stdio. No error output means it started cleanly.

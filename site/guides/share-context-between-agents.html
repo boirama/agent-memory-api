@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Share Context Between Sales and Support Agents</title>
 <meta name="description" content="Let one AI agent read another's memory with scoped, revocable namespace permissions. Complete Python guide with hierarchical grants and TTL auto-revoke.">
-<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/share-context-between-agents.html">
+<link rel="canonical" href="https://boirama.github.io/agent-memory-api/guides/share-context-between-agents.html">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -58,7 +58,7 @@ th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);
 <h2>Authentication</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
@@ -155,7 +155,7 @@ print(r.json()["count"])   # 0 again
 <h2>Complete Working Example</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",

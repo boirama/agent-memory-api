@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Auto-Expire Stale Memories with TTL</title>
 <meta name="description" content="Stop outdated facts polluting your AI agent's responses. Set time-to-live on memories so they expire automatically, and understand how importance decay ranks old facts down.">
-<link rel="canonical" href="https://YOUR-GITHUB-USERNAME.github.io/agent-memory-api/guides/auto-expire-stale-memories.html">
+<link rel="canonical" href="https://boirama.github.io/agent-memory-api/guides/auto-expire-stale-memories.html">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -57,7 +57,7 @@ th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);
 <h2>Authentication</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
@@ -171,7 +171,7 @@ for ns in s["namespaces"][:5]:
 <h2>Complete Working Example</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.YOUR-NAME.workers.dev"
+BASE = "https://agent-memory-api.boirama.workers.dev"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
