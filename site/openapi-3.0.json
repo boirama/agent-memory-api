@@ -1,0 +1,2121 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Agent Memory API",
+    "summary": "Persistent, shareable memory for AI agents with semantic recall and TTL expiry.",
+    "description": "\n**Make your AI agent remember context across sessions.**\n\nEvery AI agent forgets everything when the conversation ends. This API gives\nagents somewhere to put what they learn, and a way to get it back ranked by\nhow relevant *and* how important it is.\n\n### What it solves\n\n- Your agent asks a user the same onboarding questions every session\n- Two agents need the same customer context but can't see each other's data\n- Stale facts pollute responses long after they stopped being true\n- You need memory recall fast enough to sit in a live conversation\n\n### How recall works\n\nEvery result is scored on three signals at once: semantic similarity,\nfull-text match, and salience. Salience decays for memories nobody touches\nand strengthens for memories recalled often, so an agent's working set\nsharpens over time instead of drowning in stale facts.\n\n### Sharing between agents\n\nAgents grant each other scoped access to namespaces, like sharing a folder.\nA sales agent's notes on a lead become readable by the support agent handling\nthe ticket, without either one owning the other's data. Grants are\nhierarchical, revocable and time-boxable.\n\n### Three calls to get started\n\n1. `POST /v1/agents` \u2014 register your agent (idempotent, call it on boot)\n2. `POST /v1/memories` \u2014 store a fact\n3. `GET /v1/memories?query=...&agent_id=...` \u2014 get it back\n\nEvery response includes `cost_usd`, so you always know what a call cost.\n",
+    "license": {
+      "name": "Proprietary"
+    },
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Check API and datastore health",
+        "description": "Reports database and cache reachability. Always returns HTTP 200 even when unhealthy, so you can read the body to diagnose a bad deploy instead of having the platform roll it back first.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/schema": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Verify database migrations have been applied",
+        "description": "Lists any expected tables that are missing. Use this right after running the SQL migrations to confirm they all applied.",
+        "operationId": "schema_health_health_schema_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Schema Health Health Schema Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/memories": {
+      "post": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Store cross-session agent memory",
+        "description": "Persist a fact, preference or learning so your agent never starts from zero on the next conversation. This is the primary endpoint for cross-session memory in multi-agent systems.\n\nCommon uses: remembering user preferences such as dark mode, language or timezone; sharing sales context between a lead-qualification bot and a CRM bot; persisting error patterns so support agents learn from past tickets.\n\nSet `ttl_seconds` for facts that go stale. Set `importance` if you know how much a fact matters; omit it and it is inferred from the content.",
+        "operationId": "create_memory_v1_memories_post",
+        "parameters": [
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateMemoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Recall agent memories with semantic search",
+        "description": "Ask a question in natural language and get back the memories that answer it, ranked. Use this at the start of a conversation to reload everything your agent already knows about a user.\n\nRanking combines three signals rather than vector distance alone: semantic similarity, full-text match, and salience (importance decayed by time since last access, reinforced by how often the memory is recalled). Memories nobody touches fade; memories your agent relies on get stronger.\n\nSet `min_score` when you are feeding results straight into a prompt - without a floor, an unrelated question still returns whatever is in the namespace, and irrelevant memories in a prompt do real damage.\n\nResults include memories other agents have shared with this one. Pass `include_shared=false` to search only what this agent wrote itself.",
+        "operationId": "recall_memories_v1_memories_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "description": "Natural-language question.",
+              "title": "Query",
+              "example": "what does this customer like"
+            },
+            "description": "Natural-language question."
+          },
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "The requesting agent.",
+              "title": "Agent Id"
+            },
+            "description": "The requesting agent."
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Restrict to a namespace and its children.",
+              "title": "Namespace",
+              "nullable": true
+            },
+            "description": "Restrict to a namespace and its children."
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(user|agent|session|org)$",
+              "title": "Scope",
+              "nullable": true
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Only memories about this subject.",
+              "title": "Subject Id",
+              "nullable": true
+            },
+            "description": "Only memories about this subject."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "min_importance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "description": "Drop memories whose salience (importance after decay and reinforcement) falls below this, before relevance is considered.",
+              "default": 0.0,
+              "title": "Min Importance"
+            },
+            "description": "Drop memories whose salience (importance after decay and reinforcement) falls below this, before relevance is considered."
+          },
+          {
+            "name": "min_score",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "description": "Drop results whose final hybrid score falls below this. 0 (default) returns everything the other filters allow. 0.2-0.3 is a sensible floor for suppressing weak matches - use it when feeding results straight into a prompt, where irrelevant memories do real damage. Unlike min_importance, this filters on relevance to THIS query.",
+              "default": 0.0,
+              "title": "Min Score"
+            },
+            "description": "Drop results whose final hybrid score falls below this. 0 (default) returns everything the other filters allow. 0.2-0.3 is a sensible floor for suppressing weak matches - use it when feeding results straight into a prompt, where irrelevant memories do real damage. Unlike min_importance, this filters on relevance to THIS query."
+          },
+          {
+            "name": "include_shared",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include memories other agents shared.",
+              "default": true,
+              "title": "Include Shared"
+            },
+            "description": "Include memories other agents shared."
+          },
+          {
+            "name": "temporal_window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ISO range 'YYYY-MM-DD/YYYY-MM-DD' - only memories created inside it.",
+              "title": "Temporal Window",
+              "nullable": true,
+              "example": "2026-08-01/2026-09-24"
+            },
+            "description": "ISO range 'YYYY-MM-DD/YYYY-MM-DD' - only memories created inside it."
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/memories/{memory_id}": {
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Fetch one memory by ID",
+        "description": "Retrieve a single memory the agent owns or has been granted access to.",
+        "operationId": "get_memory_v1_memories__memory_id__get",
+        "parameters": [
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The requesting agent.",
+              "title": "Agent Id"
+            },
+            "description": "The requesting agent."
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Forget a memory",
+        "description": "Soft-deletes by default so the record stays auditable. Pass `hard=true` to remove the row permanently, which is what you need for a GDPR erasure request. Only the owning agent can delete.",
+        "operationId": "delete_memory_v1_memories__memory_id__delete",
+        "parameters": [
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Must be the owning agent.",
+              "title": "Agent Id"
+            },
+            "description": "Must be the owning agent."
+          },
+          {
+            "name": "hard",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Permanently delete instead of soft-delete.",
+              "default": false,
+              "title": "Hard"
+            },
+            "description": "Permanently delete instead of soft-delete."
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteMemoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stats": {
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Inspect memory usage and namespace breakdown",
+        "description": "Counts, per-namespace breakdown and storage footprint for your account. Use it to find namespaces that have grown unexpectedly or to confirm TTLs are actually expiring old memories.",
+        "operationId": "memory_stats_v1_stats_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Scope stats to one agent.",
+              "title": "Agent Id",
+              "nullable": true
+            },
+            "description": "Scope stats to one agent."
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents": {
+      "post": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Register an agent so it can own and share memory",
+        "description": "Idempotent - registering an existing agent updates its profile and refreshes last_seen_at, so you can safely call this on every agent boot. Registration is what lets an agent appear as a grantee in POST /v1/permissions.",
+        "operationId": "register_agent_v1_agents_post",
+        "parameters": [
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterAgentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterAgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "List the agents registered to your account",
+        "description": "Every agent under your account, most recently active first.",
+        "operationId": "list_agents_v1_agents_get",
+        "parameters": [
+          {
+            "name": "discoverable_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Discoverable Only"
+            }
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AgentRecord"
+                  },
+                  "title": "Response List Agents V1 Agents Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/permissions": {
+      "post": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Share context between agents with scoped permissions",
+        "description": "Let one agent read another's memory, like sharing a folder in Google Drive. Two modes:\n\n**Namespace grant** - pass `namespace` for standing access to everything in it and its children. A grant on 'acme/sales' also covers 'acme/sales/leads'. This is what you want for a sales agent handing context to a support agent.\n\n**Single memory** - pass `memory_id` to hand over one specific fact.\n\nSet `grantee_agent_id` to '*' to share with every agent in your account. Set `ttl_seconds` to auto-revoke. Grants are revocable at any time via DELETE /v1/permissions/{permission_id}.",
+        "operationId": "grant_permission_v1_permissions_post",
+        "parameters": [
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantPermissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantPermissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "List active permission grants",
+        "description": "Every live grant and share in your account. Revoked and expired entries are excluded.",
+        "operationId": "list_permissions_v1_permissions_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter to grants involving this agent.",
+              "title": "Agent Id",
+              "nullable": true
+            },
+            "description": "Filter to grants involving this agent."
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionRecord"
+                  },
+                  "title": "Response List Permissions V1 Permissions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/permissions/{permission_id}": {
+      "delete": {
+        "tags": [
+          "Permissions"
+        ],
+        "summary": "Revoke an agent's access",
+        "description": "Revokes by ID. Works for both namespace grants and single-memory shares. Takes effect on the next recall - cached results for the account are invalidated immediately.",
+        "operationId": "revoke_permission_v1_permissions__permission_id__delete",
+        "parameters": [
+          {
+            "name": "permission_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Permission Id"
+            }
+          },
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokePermissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/usage": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Check your current usage and remaining quota",
+        "description": "Calls used this billing period broken down by operation, the included allowance for your plan, and any overage. Poll this to warn users before they hit a limit rather than after.",
+        "operationId": "get_usage_v1_billing_usage_get",
+        "parameters": [
+          {
+            "name": "X-RapidAPI-User",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-User",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Subscription",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Subscription",
+              "nullable": true
+            }
+          },
+          {
+            "name": "X-RapidAPI-Proxy-Secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Rapidapi-Proxy-Secret",
+              "nullable": true
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Authorization",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentRecord": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "nullable": true
+          },
+          "framework": {
+            "type": "string",
+            "title": "Framework",
+            "nullable": true
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
+          },
+          "discoverable": {
+            "type": "boolean",
+            "title": "Discoverable",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "created_at",
+          "last_seen_at"
+        ],
+        "title": "AgentRecord"
+      },
+      "CreateMemoryRequest": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Content",
+            "description": "The fact, preference or observation to remember.",
+            "example": "User prefers email notifications over SMS"
+          },
+          "agent_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Agent Id",
+            "description": "Identifier of the agent writing this memory.",
+            "example": "support-bot-001"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "session",
+              "org"
+            ],
+            "title": "Scope",
+            "description": "user = a fact about a person, agent = the agent's own knowledge, session = ephemeral, org = shared organisation-wide.",
+            "default": "agent"
+          },
+          "namespace": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Namespace",
+            "description": "Slash-delimited grouping. Permissions are granted per namespace.",
+            "default": "default",
+            "example": "acme-corp/users/preferences"
+          },
+          "subject_id": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Subject Id",
+            "description": "Who or what this memory is about (a user id, a session id).",
+            "nullable": true,
+            "example": "user_8f3kLm92Xn"
+          },
+          "importance": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Importance",
+            "description": "Base salience 0-1. Omit and it is inferred from the content.",
+            "nullable": true,
+            "example": 0.85
+          },
+          "ttl_seconds": {
+            "type": "integer",
+            "maximum": 315360000.0,
+            "minimum": 0.0,
+            "title": "Ttl Seconds",
+            "description": "Auto-expire after this many seconds. Omit or 0 for permanent.",
+            "nullable": true,
+            "example": 2592000
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          },
+          "dedupe": {
+            "type": "boolean",
+            "title": "Dedupe",
+            "description": "If a near-identical memory already exists in this namespace, update it instead of creating a duplicate.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "agent_id"
+        ],
+        "title": "CreateMemoryRequest"
+      },
+      "CreateMemoryResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "updated"
+            ],
+            "title": "Status",
+            "default": "created"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "importance": {
+            "type": "number",
+            "title": "Importance"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "nullable": true
+          },
+          "tokens_used": {
+            "type": "integer",
+            "title": "Tokens Used"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "namespace",
+          "importance",
+          "tokens_used",
+          "cost_usd"
+        ],
+        "title": "CreateMemoryResponse"
+      },
+      "DeleteMemoryResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "deleted",
+              "not_found"
+            ],
+            "title": "Status"
+          },
+          "hard_deleted": {
+            "type": "boolean",
+            "title": "Hard Deleted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "status"
+        ],
+        "title": "DeleteMemoryResponse"
+      },
+      "GrantPermissionRequest": {
+        "properties": {
+          "granter_agent_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Granter Agent Id",
+            "description": "The agent giving access."
+          },
+          "grantee_agent_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Grantee Agent Id",
+            "description": "The agent receiving access. Use '*' for every agent in your account."
+          },
+          "namespace": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Namespace",
+            "description": "Grant standing access to a namespace and its children - a grant on 'acme/sales' also covers 'acme/sales/leads'. Mutually exclusive with memory_id.",
+            "nullable": true,
+            "example": "acme-corp/users/preferences"
+          },
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id",
+            "description": "Share one specific memory instead. Mutually exclusive with namespace.",
+            "nullable": true
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "admin"
+            ],
+            "title": "Permission",
+            "default": "read"
+          },
+          "ttl_seconds": {
+            "type": "integer",
+            "maximum": 315360000.0,
+            "minimum": 0.0,
+            "title": "Ttl Seconds",
+            "description": "Auto-revoke after this long.",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Note",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "granter_agent_id",
+          "grantee_agent_id"
+        ],
+        "title": "GrantPermissionRequest"
+      },
+      "GrantPermissionResponse": {
+        "properties": {
+          "permission_id": {
+            "type": "string",
+            "title": "Permission Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "namespace",
+              "memory"
+            ],
+            "title": "Kind"
+          },
+          "granter_agent_id": {
+            "type": "string",
+            "title": "Granter Agent Id"
+          },
+          "grantee_agent_id": {
+            "type": "string",
+            "title": "Grantee Agent Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace",
+            "nullable": true
+          },
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id",
+            "nullable": true
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "admin"
+            ],
+            "title": "Permission"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "nullable": true
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "permission_id",
+          "kind",
+          "granter_agent_id",
+          "grantee_agent_id",
+          "permission",
+          "cost_usd"
+        ],
+        "title": "GrantPermissionResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MemoryRecord": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "session",
+              "org"
+            ],
+            "title": "Scope"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "subject_id": {
+            "type": "string",
+            "title": "Subject Id",
+            "nullable": true
+          },
+          "importance": {
+            "type": "number",
+            "title": "Importance"
+          },
+          "effective_importance": {
+            "type": "number",
+            "title": "Effective Importance",
+            "nullable": true
+          },
+          "access_count": {
+            "type": "integer",
+            "title": "Access Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "nullable": true
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "content",
+          "agent_id",
+          "scope",
+          "namespace",
+          "importance",
+          "created_at"
+        ],
+        "title": "MemoryRecord"
+      },
+      "NamespaceStat": {
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "avg_importance": {
+            "type": "number",
+            "title": "Avg Importance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "namespace",
+          "count",
+          "avg_importance"
+        ],
+        "title": "NamespaceStat"
+      },
+      "OperationUsage": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "title": "Operation"
+          },
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "calls",
+          "cost_usd"
+        ],
+        "title": "OperationUsage"
+      },
+      "PermissionRecord": {
+        "properties": {
+          "permission_id": {
+            "type": "string",
+            "title": "Permission Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "namespace",
+              "memory"
+            ],
+            "title": "Kind"
+          },
+          "granter_agent_id": {
+            "type": "string",
+            "title": "Granter Agent Id"
+          },
+          "grantee_agent_id": {
+            "type": "string",
+            "title": "Grantee Agent Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace",
+            "nullable": true
+          },
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id",
+            "nullable": true
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "admin"
+            ],
+            "title": "Permission"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "permission_id",
+          "kind",
+          "granter_agent_id",
+          "grantee_agent_id",
+          "permission"
+        ],
+        "title": "PermissionRecord"
+      },
+      "RecallResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RecalledMemory"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "agents_consulted": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Agents Consulted",
+            "description": "Which agents contributed results, including shared ones."
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "default": false
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "results",
+          "count",
+          "latency_ms",
+          "cost_usd"
+        ],
+        "title": "RecallResponse"
+      },
+      "RecalledMemory": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "session",
+              "org"
+            ],
+            "title": "Scope"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "subject_id": {
+            "type": "string",
+            "title": "Subject Id",
+            "nullable": true
+          },
+          "importance": {
+            "type": "number",
+            "title": "Importance"
+          },
+          "effective_importance": {
+            "type": "number",
+            "title": "Effective Importance",
+            "nullable": true
+          },
+          "access_count": {
+            "type": "integer",
+            "title": "Access Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "nullable": true
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Final hybrid relevance score, 0-1."
+          },
+          "semantic_score": {
+            "type": "number",
+            "title": "Semantic Score",
+            "description": "Cosine similarity to the query."
+          },
+          "lexical_score": {
+            "type": "number",
+            "title": "Lexical Score",
+            "description": "Full-text match strength."
+          },
+          "salience_score": {
+            "type": "number",
+            "title": "Salience Score",
+            "description": "Importance after decay and reinforcement."
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "grant",
+              "share"
+            ],
+            "title": "Via",
+            "description": "How this agent can see it: it owns it, a namespace grant, or a direct share.",
+            "default": "owned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "content",
+          "agent_id",
+          "scope",
+          "namespace",
+          "importance",
+          "created_at",
+          "score",
+          "semantic_score",
+          "lexical_score",
+          "salience_score"
+        ],
+        "title": "RecalledMemory"
+      },
+      "RegisterAgentRequest": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Agent Id",
+            "example": "support-bot-001"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Display Name",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Description",
+            "nullable": true
+          },
+          "framework": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Framework",
+            "description": "langchain | crewai | autogen | mcp | custom",
+            "nullable": true,
+            "example": "langchain"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "title": "Capabilities"
+          },
+          "discoverable": {
+            "type": "boolean",
+            "title": "Discoverable",
+            "description": "Let other agents in your account find this one.",
+            "default": false
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id"
+        ],
+        "title": "RegisterAgentRequest"
+      },
+      "RegisterAgentResponse": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentRecord"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "registered",
+              "updated"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent",
+          "status"
+        ],
+        "title": "RegisterAgentResponse"
+      },
+      "RevokePermissionResponse": {
+        "properties": {
+          "permission_id": {
+            "type": "string",
+            "title": "Permission Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "revoked",
+              "not_found"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "permission_id",
+          "status"
+        ],
+        "title": "RevokePermissionResponse"
+      },
+      "StatsResponse": {
+        "properties": {
+          "total_memories": {
+            "type": "integer",
+            "title": "Total Memories"
+          },
+          "active_memories": {
+            "type": "integer",
+            "title": "Active Memories"
+          },
+          "expired_memories": {
+            "type": "integer",
+            "title": "Expired Memories"
+          },
+          "total_agents": {
+            "type": "integer",
+            "title": "Total Agents"
+          },
+          "namespaces": {
+            "items": {
+              "$ref": "#/components/schemas/NamespaceStat"
+            },
+            "type": "array",
+            "title": "Namespaces"
+          },
+          "oldest_memory_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Oldest Memory At",
+            "nullable": true
+          },
+          "newest_memory_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Newest Memory At",
+            "nullable": true
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "title": "Storage Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_memories",
+          "active_memories",
+          "expired_memories",
+          "total_agents",
+          "namespaces",
+          "storage_bytes"
+        ],
+        "title": "StatsResponse"
+      },
+      "UsageResponse": {
+        "properties": {
+          "billing_period": {
+            "type": "string",
+            "title": "Billing Period"
+          },
+          "plan": {
+            "type": "string",
+            "title": "Plan"
+          },
+          "total_calls": {
+            "type": "integer",
+            "title": "Total Calls"
+          },
+          "included_calls": {
+            "type": "integer",
+            "title": "Included Calls"
+          },
+          "remaining_calls": {
+            "type": "integer",
+            "title": "Remaining Calls"
+          },
+          "overage_calls": {
+            "type": "integer",
+            "title": "Overage Calls"
+          },
+          "estimated_cost_usd": {
+            "type": "number",
+            "title": "Estimated Cost Usd"
+          },
+          "by_operation": {
+            "items": {
+              "$ref": "#/components/schemas/OperationUsage"
+            },
+            "type": "array",
+            "title": "By Operation"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "billing_period",
+          "plan",
+          "total_calls",
+          "included_calls",
+          "remaining_calls",
+          "overage_calls",
+          "estimated_cost_usd",
+          "by_operation",
+          "period_start",
+          "period_end"
+        ],
+        "title": "UsageResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Memory",
+      "description": "Store, recall, and forget agent memories with semantic search."
+    },
+    {
+      "name": "Agents",
+      "description": "Register the agents that own and share memory."
+    },
+    {
+      "name": "Permissions",
+      "description": "Grant and revoke agent-to-agent access to memory namespaces."
+    },
+    {
+      "name": "Billing",
+      "description": "Usage and quota visibility."
+    },
+    {
+      "name": "System",
+      "description": "Health checks and discovery."
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://agent-memory-api.boirama.workers.dev",
+      "description": "Production (Cloudflare edge)"
+    },
+    {
+      "url": "https://agent-memory-api.p.rapidapi.com",
+      "description": "Via RapidAPI gateway"
+    }
+  ],
+  "externalDocs": {
+    "description": "Guides and integration examples",
+    "url": "https://boirama.github.io/agent-memory-api/"
+  }
+}
