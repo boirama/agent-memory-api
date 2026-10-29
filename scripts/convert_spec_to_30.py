@@ -12,6 +12,10 @@ Three things differ in practice:
      "example". (3.0's "examples" is a map of Example Objects, not an array,
      so leaving it would be invalid.)
   3. "const": X became valid in 3.1; 3.0 expresses it as "enum": [X].
+  4. Fields that only exist in 3.1: info.summary, info.license.identifier,
+     jsonSchemaDialect, webhooks, components.pathItems. A 3.0 validator
+     rejects the WHOLE document over any one of them, which is how the
+     RapidAPI import fails with "should NOT have additional properties".
 
 Everything else in a FastAPI spec is already 3.0-compatible.
 
@@ -84,8 +88,24 @@ def main() -> int:
     spec = convert(spec)
     spec["openapi"] = "3.0.3"
 
-    # 3.1 allows webhooks at the top level; 3.0 does not.
+    # ---- fields that exist only in 3.1 ---------------------------------
+    # A 3.0 validator rejects the entire document over any one of these,
+    # so they must go even though they carry no schema meaning.
     spec.pop("webhooks", None)
+    spec.pop("jsonSchemaDialect", None)
+    spec.get("components", {}).pop("pathItems", None)
+
+    info = spec.get("info", {})
+
+    # info.summary is 3.1-only. Don't discard the text - fold it into the
+    # description, which 3.0 does have, so the listing keeps the copy.
+    summary = info.pop("summary", None)
+    if summary:
+        existing = info.get("description", "")
+        info["description"] = f"{summary}\n\n{existing}".strip()
+
+    # license.identifier is 3.1-only; 3.0 allows only name and url.
+    info.get("license", {}).pop("identifier", None)
 
     with open(dst, "w") as f:
         json.dump(spec, f, indent=2)
@@ -95,6 +115,9 @@ def main() -> int:
         'anyOf with "type": "null"': blob.count('{"type": "null"}'),
         '"examples" arrays': blob.count('"examples": ['),
         '"const" keywords': blob.count('"const"'),
+        "info.summary": 1 if "summary" in spec.get("info", {}) else 0,
+        "jsonSchemaDialect": 1 if "jsonSchemaDialect" in spec else 0,
+        "webhooks": 1 if "webhooks" in spec else 0,
     }
 
     print(f"{src} ({original_version}) -> {dst} (3.0.3)")
