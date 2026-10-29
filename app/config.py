@@ -28,8 +28,7 @@ class Settings(BaseSettings):
 
     # Where your docs live. Emitted in the OpenAPI spec and in the
     # Link headers AI crawlers follow. Set it once you publish GitHub Pages.
-    docs_base_url: str = "https://example.github.io/agent-memory-api"
-
+    docs_base_url: str = "https://boirama.github.io/agent-memory-api"
     # ---- datastores ----------------------------------------------------
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres"
     redis_url: str = "redis://localhost:6379/0"
