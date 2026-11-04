@@ -16,21 +16,21 @@
   "@type": "WebAPI",
   "name": "Agent Memory API",
   "description": "Persistent memory for AI agents. Store facts an agent learns, recall them with hybrid semantic search, expire stale memories automatically, and grant other agents scoped read access to memory namespaces.",
-  "url": "https://agent-memory-api.boirama.workers.dev",
+  "url": "https://agent-memory-api1.p.rapidapi.com",
   "documentation": "https://boirama.github.io/agent-memory-api/",
-  "termsOfService": "https://rapidapi.com/bramatlhakwana/api/agent-memory-api1",
+  "termsOfService": "https://rapidapi.com/bramatlhakwana/api/agent-memory-api",
   "provider": {
     "@type": "Organization",
     "name": "Agent Memory API"
   },
-  "availableChannel": {
+    "availableChannel": {
     "@type": "ServiceChannel",
-    "serviceUrl": "https://agent-memory-api.boirama.workers.dev/v1",
-    "serviceType": "REST API"
+    "serviceUrl": "https://agent-memory-api1.p.rapidapi.com/v1"
   },
+  "serviceType": "REST API",
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://agent-memory-api.boirama.workers.dev/v1/memories?query={query}",
+    "target": "https://agent-memory-api1.p.rapidapi.com/v1/memories?query={query}",
     "query-input": "required name=query"
   }
 }
@@ -74,10 +74,10 @@ th{font-weight:600}
 <h3>Python</h3>
 <pre><code>import httpx
 
-BASE = "https://agent-memory-api.boirama.workers.dev"
+BASE = "https://agent-memory-api1.p.rapidapi.com"
 HEADERS = {
     "X-RapidAPI-Key": "your-rapidapi-key",
-    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
     "Content-Type": "application/json",
 }
 
@@ -106,10 +106,10 @@ for m in r.json()["results"]:
 </code></pre>
 
 <h3>TypeScript</h3>
-<pre><code>const BASE = "https://agent-memory-api.boirama.workers.dev";
+<pre><code>const BASE = "https://agent-memory-api1.p.rapidapi.com";
 const headers = {
   "X-RapidAPI-Key": process.env.RAPIDAPI_KEY!,
-  "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+  "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
   "Content-Type": "application/json",
 };
 
@@ -146,7 +146,7 @@ const { results } = await res.json();
 <p>Send your RapidAPI key on every request. The gateway identifies your account and meters usage; you do not manage keys yourself.</p>
 <pre><code>headers = {
     "X-RapidAPI-Key": "your-rapidapi-key",
-    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
 }</code></pre>
 
 <h3>Direct bearer key (enterprise)</h3>

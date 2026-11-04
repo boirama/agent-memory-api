@@ -59,10 +59,10 @@ th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);
 <p>Every request carries your key. Through the RapidAPI gateway:</p>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.boirama.workers.dev"
+BASE = "https://agent-memory-api1.p.rapidapi.com"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
-    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
     "Content-Type": "application/json",
 }
 AGENT_ID = "support-bot-001"
@@ -128,10 +128,10 @@ Write facts that stand alone. "Prefers email over SMS" is recallable in six mont
 <h2>Complete Working Example</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.boirama.workers.dev"
+BASE = "https://agent-memory-api1.p.rapidapi.com"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
-    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
     "Content-Type": "application/json",
 }
 AGENT_ID = "support-bot-001"
@@ -177,10 +177,10 @@ mem.save("Asked about SAML SSO on the Enterprise plan")
 </code></pre>
 
 <h2>TypeScript Version</h2>
-<pre><code>const BASE = "https://agent-memory-api.boirama.workers.dev";
+<pre><code>const BASE = "https://agent-memory-api1.p.rapidapi.com";
 const headers = {
   "X-RapidAPI-Key": process.env.RAPIDAPI_KEY!,
-  "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+  "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
   "Content-Type": "application/json",
 };
 const AGENT_ID = "support-bot-001";

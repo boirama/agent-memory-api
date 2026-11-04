@@ -28,9 +28,9 @@ Agent Memory API is a REST service that fixes all three.
 ```python
 import httpx
 
-BASE = "https://agent-memory-api.p.rapidapi.com"
+BASE = "https://agent-memory-api1.p.rapidapi.com"
 H = {"X-RapidAPI-Key": "YOUR_KEY",
-     "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com"}
+     "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com"}
 
 # 1. Register your agent (idempotent, call on boot)
 httpx.post(f"{BASE}/v1/agents", headers=H, json={"agent_id": "support-bot-001"})

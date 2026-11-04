@@ -9,7 +9,7 @@ Install and run:
 
     pip install "mcp[cli]" httpx
     export AGENT_MEMORY_API_KEY="your-rapidapi-key"
-    export AGENT_MEMORY_BASE_URL="https://agent-memory-api.yourname.workers.dev"
+    export AGENT_MEMORY_BASE_URL="https://agent-memory-api1.p.rapidapi.com"
     python mcp/server.py
 
 Then add to your MCP client config (Claude Desktop shown):
@@ -21,7 +21,7 @@ Then add to your MCP client config (Claude Desktop shown):
           "args": ["/absolute/path/to/mcp/server.py"],
           "env": {
             "AGENT_MEMORY_API_KEY": "your-key",
-            "AGENT_MEMORY_BASE_URL": "https://your-worker.workers.dev"
+            "AGENT_MEMORY_BASE_URL": "https://agent-memory-api1.p.rapidapi.com"
           }
         }
       }

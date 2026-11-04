@@ -57,10 +57,10 @@ th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--border);
 <h2>Authentication</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.boirama.workers.dev"
+BASE = "https://agent-memory-api1.p.rapidapi.com"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
-    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
     "Content-Type": "application/json",
 }
 </code></pre>
@@ -171,10 +171,10 @@ for ns in s["namespaces"][:5]:
 <h2>Complete Working Example</h2>
 <pre><code>import os, httpx
 
-BASE = "https://agent-memory-api.boirama.workers.dev"
+BASE = "https://agent-memory-api1.p.rapidapi.com"
 HEADERS = {
     "X-RapidAPI-Key": os.environ["RAPIDAPI_KEY"],
-    "X-RapidAPI-Host": "agent-memory-api.p.rapidapi.com",
+    "X-RapidAPI-Host": "agent-memory-api1.p.rapidapi.com",
     "Content-Type": "application/json",
 }
 

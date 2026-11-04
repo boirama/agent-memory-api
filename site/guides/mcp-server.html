@@ -81,9 +81,9 @@ pip install -r mcp/requirements.txt
       "command": "python",
       "args": ["/absolute/path/to/agent-memory-api/mcp/server.py"],
       "env": {
-        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api.boirama.workers.dev",
+        "AGENT_MEMORY_BASE_URL": "https://agent-memory-api1.p.rapidapi.com",
         "AGENT_MEMORY_API_KEY": "your-rapidapi-key",
-        "AGENT_MEMORY_RAPIDAPI_HOST": "agent-memory-api.p.rapidapi.com",
+        "AGENT_MEMORY_RAPIDAPI_HOST": "agent-memory-api1.p.rapidapi.com",
         "AGENT_MEMORY_AGENT_ID": "claude-desktop"
       }
     }
@@ -139,7 +139,7 @@ Claude: [calls recall]
 </table>
 
 <p>Test the server standalone before blaming the client:</p>
-<pre><code>export AGENT_MEMORY_BASE_URL="https://agent-memory-api.boirama.workers.dev"
+<pre><code>export AGENT_MEMORY_BASE_URL="https://agent-memory-api1.p.rapidapi.com"
 export AGENT_MEMORY_API_KEY="your-key"
 python mcp/server.py
 # Waits on stdio. No error output means it started cleanly.

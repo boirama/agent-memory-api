@@ -21,9 +21,7 @@ from app.main import app
 spec = app.openapi()
 # Advertise the public URL, not localhost.
 spec["servers"] = [
-    {"url": "https://agent-memory-api.boirama.workers.dev",
-     "description": "Production (Cloudflare edge)"},
-    {"url": "https://agent-memory-api.p.rapidapi.com",
+    {"url": "https://agent-memory-api1.p.rapidapi.com",
      "description": "Via RapidAPI gateway"},
 ]
 spec["externalDocs"] = {
