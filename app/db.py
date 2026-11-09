@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.pool import NullPool
+from uuid import uuid4
 
 from .config import settings
 
@@ -36,6 +37,7 @@ if settings.uses_pgbouncer:
     logger.info("Supabase pooler detected - disabling prepared statements")
     _connect_args["statement_cache_size"] = 0
     _connect_args["prepared_statement_cache_size"] = 0
+    _connect_args["prepared_statement_name_func"] = lambda: f"__asyncpg_{uuid4()}__"
     _engine_kwargs["poolclass"] = NullPool
 else:
     _engine_kwargs.update(
