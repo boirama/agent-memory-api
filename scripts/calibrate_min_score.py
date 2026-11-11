@@ -17,7 +17,7 @@ Usage (from the repo root):
     python3 scripts/calibrate_min_score.py          # run, then delete test memories
     python3 scripts/calibrate_min_score.py --keep   # run, keep them for inspection
 
-Costs about 17 requests from your plan's monthly quota.
+Costs about 17 requests from your plan's monthly quota (more if retries happen).
 """
 
 from __future__ import annotations
@@ -35,7 +35,8 @@ HOST = "agent-memory-api1.p.rapidapi.com"
 BASE = f"https://{HOST}"
 AGENT = "launch-test"
 NAMESPACE = "launch/calib"
-PAUSE = 3.0  # seconds between calls, to stay clear of per-second rate limits
+PAUSE = 3.0  # seconds between calls
+RETRIES = 5  # attempts per call when the gateway returns a spurious 401 / 429
 
 # key -> (content, importance). Importance varies on purpose: a LOW-importance
 # right answer and a HIGH-importance distractor are the hard cases for a floor
@@ -70,20 +71,76 @@ def call(method: str, path: str, key: str, params=None, body=None):
         "Content-Type": "application/json",
         "User-Agent": "agent-memory-calibrate/1.0",
     })
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read()
-            time.sleep(PAUSE)
-            return resp.status, (json.loads(raw) if raw else {})
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="replace")[:300]
-        sys.exit(f"\n{method} {path} failed: HTTP {e.code}\n{detail}\n")
-    except urllib.error.URLError as e:
-        sys.exit(f"\nCould not reach {HOST}: {e.reason}\n")
+    for attempt in range(1, RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read()
+                time.sleep(PAUSE)
+                return resp.status, (json.loads(raw) if raw else {})
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")[:300]
+            # The RapidAPI gateway intermittently answers a VALID key with
+            # 401 "Invalid API key" (the request never reaches the API), and
+            # 429 means slow down. Both are worth retrying; anything else is not.
+            gateway_flake = e.code == 401 and "Invalid API key" in detail
+            if (gateway_flake or e.code == 429) and attempt < RETRIES:
+                print(f"    (HTTP {e.code} from gateway, retry {attempt}/{RETRIES - 1})")
+                time.sleep(5 * attempt)
+                continue
+            sys.exit(f"\n{method} {path} failed: HTTP {e.code}\n{detail}\n")
+        except urllib.error.URLError as e:
+            sys.exit(f"\nCould not reach {HOST}: {e.reason}\n")
 
 
 def floor05(x: float) -> float:
     return math.floor(x * 20) / 20
+
+
+# Candidate (semantic, lexical, salience) weights. All re-score the SAME
+# recall results offline - no extra API calls. Current production first.
+WEIGHT_SETS = [
+    (0.55, 0.25, 0.20),
+    (0.70, 0.20, 0.10),
+    (0.75, 0.15, 0.10),
+    (0.80, 0.15, 0.05),
+    (0.85, 0.15, 0.00),
+]
+
+
+def simulate(observed) -> None:
+    print("\nPer-memory signals (semantic / lexical / salience):")
+    for question, expect, comps in observed:
+        print(f"  {question[:46]}")
+        for name, (sem, lex, sal) in sorted(comps.items(), key=lambda kv: -kv[1][0]):
+            mark = "  <- right" if name == expect else ""
+            print(f"      {name:<8} {sem:.3f} / {lex:.3f} / {sal:.3f}{mark}")
+
+    print("\nWhat-if: the same results re-scored with other weights")
+    print(f"{'sem/lex/sal':<16}{'misranked':>10}{'lowest right':>14}"
+          f"{'highest wrong':>15}  verdict")
+    print("-" * 90)
+    for ws, wl, wsal in WEIGHT_SETS:
+        rights, wrongs, bad = [], [], 0
+        for _, expect, comps in observed:
+            scored = {n: ws * a + wl * b + wsal * c for n, (a, b, c) in comps.items()}
+            top = max(scored, key=scored.get)
+            if expect is not None:
+                rights.append(scored[expect])
+                bad += top != expect
+            wrongs.append(max((v for n, v in scored.items() if n != expect), default=0.0))
+        r_min, w_max = min(rights), max(wrongs)
+        if bad == 0 and r_min > w_max:
+            sug = floor05(w_max + 0.4 * (r_min - w_max))
+            if sug <= w_max:
+                sug = round(w_max + 0.01, 2)
+            verdict = f"OK, min_score ~ {sug:.2f}"
+        elif bad == 0:
+            verdict = "ranks right, floor overlaps"
+        else:
+            verdict = "wrong memory ranked first"
+        label = f"{ws:.2f}/{wl:.2f}/{wsal:.2f}" + (" *" if (ws, wl, wsal) == WEIGHT_SETS[0] else "")
+        print(f"{label:<16}{bad:>10}{r_min:>14.3f}{w_max:>15.3f}  {verdict}")
+    print("(* = current production weights)")
 
 
 def main() -> int:
@@ -112,6 +169,7 @@ def main() -> int:
     rights: list[float] = []
     wrongs: list[float] = []
     misranked = []
+    observed = []  # (question, expect, {name: (semantic, lexical, salience)})
     for question, expect in QUERIES:
         _, r = call("GET", "/v1/memories", key, params={
             "query": question, "agent_id": AGENT, "namespace": NAMESPACE,
@@ -130,6 +188,12 @@ def main() -> int:
             else:
                 worst_wrong = max(worst_wrong, x["score"])
         top = by_id[results[0]["memory_id"]]
+        observed.append((question, expect, {
+            by_id[x["memory_id"]]: (max(0.0, x.get("semantic_score", 0.0)),
+                                     x.get("lexical_score", 0.0),
+                                     x.get("salience_score", 0.0))
+            for x in results
+        }))
 
         if expect is not None:
             if right is None:
@@ -167,6 +231,8 @@ def main() -> int:
         print("relevant one, because importance feeds the score being filtered.")
         print("Recommend the docs say 'start around 0.3 and tune for your data',")
         print("and see fix H10 in the launch guide.")
+
+    simulate(observed)
 
     # ---- 4. clean up -----------------------------------------------------
     if keep:

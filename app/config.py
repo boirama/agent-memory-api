@@ -48,9 +48,9 @@ class Settings(BaseSettings):
     openai_embedding_model: str = "text-embedding-3-small"
 
     # ---- ranking -------------------------------------------------------
-    weight_semantic: float = 0.55
-    weight_lexical: float = 0.25
-    weight_salience: float = 0.20
+    weight_semantic: float = 0.80
+    weight_lexical: float = 0.15
+    weight_salience: float = 0.05
     decay_rate_per_day: float = 0.015  # ~46-day half-life when unaccessed
     reinforcement_factor: float = 0.06
     default_recall_limit: int = 10
