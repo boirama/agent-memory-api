@@ -2,9 +2,9 @@
 
 Three signals combine:
 
-  semantic (0.55)  cosine similarity against the query embedding
-  lexical  (0.25)  Postgres ts_rank_cd over the generated tsvector
-  salience (0.20)  base importance, decayed by time since last access and
+  semantic (0.80)  cosine similarity against the query embedding
+  lexical  (0.15)  Postgres ts_rank_cd over the generated tsvector
+  salience (0.05)  base importance, decayed by time since last access and
                    reinforced by how often the memory has been recalled
 
 The salience term is the interesting one. Vector stores treat every memory

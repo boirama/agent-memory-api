@@ -58,9 +58,9 @@ fact as equally valuable forever. This one scores three signals at once:
 
 | Signal | Weight | Measures |
 |---|---|---|
-| Semantic | 0.55 | Cosine similarity to your query |
-| Lexical | 0.25 | Full-text match, so exact names and IDs still hit |
-| Salience | 0.20 | Importance decayed by time, reinforced by recall frequency |
+| Semantic | 0.80 | Cosine similarity to your query |
+| Lexical | 0.15 | Full-text match, so exact names and IDs still hit |
+| Salience | 0.05 | Importance decayed by time, reinforced by recall frequency |
 
 A fact recalled forty times is load-bearing and gets stronger. A fact nobody
 has touched in six months fades. Your agent's working set sharpens instead of

@@ -15,7 +15,7 @@ responses long after they stopped being true.
 ## Key differentiator
 
 Recall ranks on three signals, not vector distance alone: semantic similarity
-(0.55), Postgres full-text match (0.25), and salience (0.20) — importance
+(0.80), Postgres full-text match (0.15), and salience (0.05) — importance
 decayed by time since last access and reinforced by recall frequency. Memories
 nobody touches fade; memories the agent relies on strengthen.
 

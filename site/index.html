@@ -181,9 +181,9 @@ Keys are server-side credentials. Never ship one in browser JavaScript, a mobile
 
 <table>
 <tr><th>Signal</th><th>Weight</th><th>What it measures</th></tr>
-<tr><td>Semantic</td><td>0.55</td><td>Cosine similarity between the query and the memory</td></tr>
-<tr><td>Lexical</td><td>0.25</td><td>Postgres full-text match, so exact names and IDs still hit</td></tr>
-<tr><td>Salience</td><td>0.20</td><td>Importance, decayed by time since last access, reinforced by recall frequency</td></tr>
+<tr><td>Semantic</td><td>0.80</td><td>Cosine similarity between the query and the memory</td></tr>
+<tr><td>Lexical</td><td>0.15</td><td>Postgres full-text match, so exact names and IDs still hit</td></tr>
+<tr><td>Salience</td><td>0.05</td><td>Importance, decayed by time since last access, reinforced by recall frequency</td></tr>
 </table>
 
 <p>Salience is the part that matters over time. A fact recalled forty times is load-bearing and gets stronger. A fact nobody has touched in six months fades. Your agent's working set sharpens instead of drowning in stale context. Every result returns its individual sub-scores, so you can see why something ranked where it did.</p>
